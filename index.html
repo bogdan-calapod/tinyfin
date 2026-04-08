@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>TinyFin</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+</head>
+<body>
+    <!-- Setup Screen -->
+    <div id="setup-screen" class="screen">
+        <div class="setup-container">
+            <div class="setup-logo">
+                <svg viewBox="0 0 100 100" class="logo-icon">
+                    <circle cx="50" cy="50" r="45" fill="#FF6B9D"/>
+                    <polygon points="40,30 40,70 75,50" fill="white"/>
+                </svg>
+            </div>
+            <div class="setup-form">
+                <input type="url" id="server-url" placeholder="Jellyfin Server URL" autocomplete="url">
+                <input type="text" id="username" placeholder="Username" autocomplete="username">
+                <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+                <button id="connect-btn" class="connect-button">
+                    <svg viewBox="0 0 24 24" width="48" height="48">
+                        <circle cx="12" cy="12" r="10" fill="#4CAF50"/>
+                        <path d="M8 12l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="setup-error" class="error-message"></div>
+        </div>
+    </div>
+
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen hidden">
+        <!-- Offline Indicator -->
+        <div id="offline-indicator" class="offline-indicator hidden">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+                <path d="M24 8.98C20.93 5.9 16.69 4 12 4c-.32 0-.65.02-.97.05L3.71 2.1 2.29 3.52l18.19 18.19 1.41-1.42-3.01-3.01C21.17 15.29 24 12.37 24 8.98zM12 6c4.14 0 7.89 1.68 10.6 4.39l-1.41 1.41C19.09 9.71 15.73 8 12 8c-.94 0-1.86.1-2.75.28l-1.6-1.6C8.97 6.25 10.46 6 12 6z" fill="white"/>
+                <circle cx="12" cy="18" r="2" fill="white"/>
+            </svg>
+        </div>
+        <!-- Navigation Bar -->
+        <nav class="nav-bar">
+            <button class="nav-btn active" data-filter="all" aria-label="All">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" fill="#FF9800"/>
+                    <rect x="7" y="7" width="4" height="4" rx="1" fill="white"/>
+                    <rect x="13" y="7" width="4" height="4" rx="1" fill="white"/>
+                    <rect x="7" y="13" width="4" height="4" rx="1" fill="white"/>
+                    <rect x="13" y="13" width="4" height="4" rx="1" fill="white"/>
+                </svg>
+            </button>
+            <button class="nav-btn" data-filter="favorites" aria-label="Favorites">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#E91E63"/>
+                </svg>
+            </button>
+            <button class="nav-btn" data-filter="recent" aria-label="Recently Watched">
+                <svg viewBox="0 0 24 24">
+                    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="#FFD700"/>
+                </svg>
+            </button>
+            <button class="nav-btn" data-filter="downloads" aria-label="Downloads">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" fill="#4CAF50"/>
+                    <path d="M12 6v8M8 11l4 4 4-4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M7 16h10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button class="nav-btn settings-btn" aria-label="Settings">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3" fill="#9C27B0"/>
+                    <path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="#9C27B0" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </nav>
+
+        <!-- Content Grid -->
+        <main class="content-grid" id="content-grid">
+            <!-- Items will be dynamically inserted here -->
+        </main>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <!-- Player Screen -->
+    <div id="player-screen" class="screen hidden">
+        <video id="video-player" playsinline></video>
+        
+        <!-- Buffering Indicator -->
+        <div id="buffering-indicator" class="buffering-indicator hidden">
+            <div class="buffering-spinner"></div>
+        </div>
+        
+        <!-- Simple Play/Pause overlay -->
+        <div id="player-overlay" class="player-overlay">
+            <button id="play-pause-btn" class="play-pause-btn" aria-label="Play/Pause">
+                <svg viewBox="0 0 24 24" class="play-icon">
+                    <polygon points="5,3 19,12 5,21" fill="white"/>
+                </svg>
+                <svg viewBox="0 0 24 24" class="pause-icon hidden">
+                    <rect x="6" y="4" width="4" height="16" rx="1" fill="white"/>
+                    <rect x="14" y="4" width="4" height="16" rx="1" fill="white"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Back Button -->
+        <button id="back-btn" class="back-btn" aria-label="Go Back">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.5)"/>
+                <path d="M15 18l-6-6 6-6" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+
+        <!-- Swipe-up Drawer -->
+        <div id="related-drawer" class="related-drawer">
+            <div class="drawer-handle"></div>
+            <div class="drawer-content" id="drawer-content">
+                <!-- Related videos will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Swipe hint indicator -->
+        <div id="swipe-hint" class="swipe-hint">
+            <div class="swipe-arrow"></div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="logout-btn" class="logout-btn">
+                <svg viewBox="0 0 24 24" width="64" height="64">
+                    <circle cx="12" cy="12" r="11" fill="#f44336"/>
+                    <path d="M9 9l6 6M15 9l-6 6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button id="close-settings" class="close-modal-btn">
+                <svg viewBox="0 0 24 24" width="48" height="48">
+                    <circle cx="12" cy="12" r="10" fill="#607D8B"/>
+                    <path d="M7 12h10M12 7l5 5-5 5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="js/jellyfin-api.js"></script>
+    <script src="js/download-manager.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Register Service Worker for PWA/offline support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('SW registered:', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New version available
+                                    console.log('New version available');
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
