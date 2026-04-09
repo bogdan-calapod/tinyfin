@@ -359,6 +359,18 @@ class TinyFinApp {
             btn.addEventListener('click', () => this.handleNavigation(btn.dataset.filter));
         });
         
+        // Online/offline events - update nav visibility
+        window.addEventListener('online', () => {
+            console.log('Back online');
+            this.updateNavVisibility();
+            this.updateOfflineIndicator();
+        });
+        window.addEventListener('offline', () => {
+            console.log('Gone offline');
+            this.updateNavVisibility();
+            this.updateOfflineIndicator();
+        });
+        
         // Settings events
         this.settingsBtn.addEventListener('click', () => this.showSettings());
         this.logoutBtn.addEventListener('click', () => this.handleLogout());
@@ -456,6 +468,10 @@ class TinyFinApp {
 
     async showHome() {
         this.showScreen(this.homeScreen);
+        
+        // Update nav visibility and switch to downloads if offline
+        this.updateNavVisibility();
+        
         await this.loadContent();
     }
 
@@ -585,14 +601,51 @@ class TinyFinApp {
     isOnline() {
         return navigator.onLine;
     }
+    
+    /**
+     * Shuffle an array (Fisher-Yates)
+     */
+    shuffleArray(array) {
+        const result = [...array];
+        for (let i = result.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [result[i], result[j]] = [result[j], result[i]];
+        }
+        return result;
+    }
 
     /**
-     * Update offline indicator
+     * Update offline indicator and nav visibility
      */
     updateOfflineIndicator() {
         const indicator = document.getElementById('offline-indicator');
         if (indicator) {
             indicator.classList.toggle('hidden', this.isOnline());
+        }
+        
+        // Show/hide nav tabs based on online status
+        this.updateNavVisibility();
+    }
+    
+    /**
+     * Update navigation tabs visibility based on online/offline status
+     */
+    updateNavVisibility() {
+        const isOnline = this.isOnline();
+        
+        // Hide all tabs except downloads when offline
+        this.navButtons.forEach(btn => {
+            const filter = btn.dataset.filter;
+            if (filter === 'downloads') {
+                btn.classList.remove('hidden');
+            } else {
+                btn.classList.toggle('hidden', !isOnline);
+            }
+        });
+        
+        // If offline and not already on downloads, switch to it
+        if (!isOnline && this.currentFilter !== 'downloads') {
+            this.handleNavigation('downloads');
         }
     }
 
@@ -694,8 +747,8 @@ class TinyFinApp {
                 this.contentGrid.insertAdjacentHTML('beforeend', cardHtml);
             }
             
-            // Attach event handlers
-            this.attachCardEventHandlers(this.contentGrid);
+            // Attach event handlers (including delete buttons)
+            this.attachDownloadedCardEventHandlers(this.contentGrid);
             
         } catch (error) {
             console.error('Failed to load downloaded content:', error);
@@ -704,7 +757,58 @@ class TinyFinApp {
     }
     
     /**
-     * Create a content card for downloaded items (with local thumbnail)
+     * Attach event handlers specifically for downloaded content cards (with delete button)
+     */
+    attachDownloadedCardEventHandlers(container) {
+        container.querySelectorAll('.content-card').forEach(card => {
+            const itemId = card.dataset.id;
+            
+            // Play on click (but not if clicking delete button)
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-download-btn')) {
+                    return;
+                }
+                this.playItem(itemId);
+            });
+            
+            // Delete button click
+            const deleteBtn = card.querySelector('.delete-download-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await this.handleDeleteDownload(itemId);
+                });
+            }
+        });
+    }
+    
+    /**
+     * Handle deleting a single download
+     */
+    async handleDeleteDownload(itemId) {
+        try {
+            await downloadManager.deleteDownload(itemId);
+            this.downloadedItemIds.delete(itemId);
+            
+            // Remove the card from the grid
+            const card = this.contentGrid.querySelector(`.content-card[data-id="${itemId}"]`);
+            if (card) {
+                card.remove();
+            }
+            
+            // Show empty state if no more downloads
+            if (this.contentGrid.children.length === 0) {
+                this.contentGrid.innerHTML = this.createEmptyState();
+            }
+            
+            console.log('Download deleted:', itemId);
+        } catch (error) {
+            console.error('Failed to delete download:', error);
+        }
+    }
+    
+    /**
+     * Create a content card for downloaded items (with local thumbnail and delete button)
      */
     createDownloadedContentCard(item, thumbnailUrl) {
         const isEpisode = item.Type === 'Episode';
@@ -716,7 +820,17 @@ class TinyFinApp {
             </svg>
         `)}`;
         
+        // Downloaded badge on left
         let badges = this.createDownloadedBadgeUI();
+        
+        // Delete button on right
+        badges += `
+            <button class="delete-download-btn" aria-label="Delete download">
+                <svg viewBox="0 0 24 24">
+                    <path d="M9 9v7M12 9v7M15 9v7M7 7h10M9 7V5h6v2" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        `;
         
         if (isEpisode && item.IndexNumber) {
             badges += `<div class="episode-badge">${item.IndexNumber}</div>`;
@@ -966,20 +1080,6 @@ class TinyFinApp {
                 <div class="favorite-badge">
                     <svg viewBox="0 0 24 24">
                         <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#E91E63"/>
-                    </svg>
-                </div>
-            `;
-        }
-
-        // Series badge (bottom-left)
-        if (isEpisode && !showEpisodeNumber) {
-            badges += `
-                <div class="series-badge">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="3" y="3" width="7" height="7" rx="1" fill="white"/>
-                        <rect x="14" y="3" width="7" height="7" rx="1" fill="white"/>
-                        <rect x="3" y="14" width="7" height="7" rx="1" fill="white"/>
-                        <rect x="14" y="14" width="7" height="7" rx="1" fill="white"/>
                     </svg>
                 </div>
             `;
@@ -1307,10 +1407,8 @@ class TinyFinApp {
                 this.playerOverlay.classList.add('visible');
             }
             
-            // Load related content if online
-            if (this.isOnline()) {
-                this.loadRelatedContent();
-            }
+            // Load related content (random items, or downloaded if offline)
+            this.loadRelatedContent();
             
         } catch (error) {
             console.error('Offline playback failed:', error);
@@ -1326,20 +1424,24 @@ class TinyFinApp {
 
         try {
             let items = [];
+            const currentItemId = this.currentItem?.Id;
 
-            // If it's an episode, show next episodes
-            if (this.currentItem.Type === 'Episode' && this.currentItem.SeriesId) {
-                const result = await jellyfinAPI.getNextEpisodes(
-                    this.currentItem.SeriesId, 
-                    this.currentItem.Id
-                );
-                items = result.Items || [];
-            }
-
-            // If no next episodes or not a series, show similar items
-            if (items.length === 0) {
-                const result = await jellyfinAPI.getSimilarItems(this.currentItem.Id);
-                items = result.Items || [];
+            if (this.isOnline()) {
+                // Online: fetch random items from all content
+                const result = await jellyfinAPI.getAllItems({ 
+                    sortBy: 'Random',
+                    limit: 20
+                });
+                items = (result.Items || []).filter(item => item.Id !== currentItemId);
+            } else {
+                // Offline: show other downloaded items
+                const downloadedItems = await downloadManager.getDownloadedItems();
+                items = downloadedItems
+                    .map(d => d.item)
+                    .filter(item => item.Id !== currentItemId);
+                
+                // Shuffle for variety
+                items = this.shuffleArray(items).slice(0, 20);
             }
 
             // Render items in drawer

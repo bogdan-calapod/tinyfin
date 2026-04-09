@@ -431,6 +431,34 @@ body {
     height: 24px;
 }
 
+/* Delete download button (top-right, shown in downloads view) */
+.content-card .delete-download-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    background: #f44336;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.2s ease;
+}
+
+.content-card .delete-download-btn:active {
+    transform: scale(0.9);
+}
+
+.content-card .delete-download-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
 /* Loading Spinner */
 .loading {
     position: fixed;
