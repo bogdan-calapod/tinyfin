@@ -283,9 +283,9 @@ class TinyFinApp {
     /**
      * Get a download-friendly stream URL
      * 
-     * Uses WebM container with VP8/Vorbis which supports streaming writes
-     * (no moov atom issue like MP4). This allows transcoding to complete
-     * properly even when downloaded progressively.
+     * Uses MP4/H.264 with hardware acceleration (QSV).
+     * We use TS container for download since it handles progressive writes better,
+     * then store as MP4 mime type (browsers handle this fine).
      */
     getDownloadStreamUrl(itemId, mediaSourceId, playSessionId, audioStreamIndex) {
         const params = new URLSearchParams({
@@ -295,26 +295,27 @@ class TinyFinApp {
             api_key: jellyfinAPI.accessToken,
             DeviceId: jellyfinAPI.deviceId,
             
-            // Use WebM - better for progressive download (no moov atom issue)
-            Container: 'webm',
-            VideoCodec: 'vp8',
-            AudioCodec: 'vorbis',
+            // Use TS container - streams properly without moov atom issues
+            Container: 'ts',
+            VideoCodec: 'h264',
+            AudioCodec: 'aac',
             
-            // Video settings - 360p
+            // Video settings - 360p for fast transcoding
             MaxWidth: 640,
             MaxHeight: 360,
             VideoBitRate: 800000,
             
             // Audio settings
             AudioBitRate: 96000,
-            MaxAudioChannels: 2
+            MaxAudioChannels: 2,
+            TranscodingMaxAudioChannels: 2
         });
         
         if (audioStreamIndex !== null) {
             params.set('AudioStreamIndex', audioStreamIndex);
         }
         
-        return `${jellyfinAPI.serverUrl}/Videos/${itemId}/stream.webm?${params}`;
+        return `${jellyfinAPI.serverUrl}/Videos/${itemId}/stream.ts?${params}`;
     }
     
     /**

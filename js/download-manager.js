@@ -340,7 +340,7 @@ class DownloadManager {
             }
 
             // Combine chunks into a single blob
-            const videoBlob = new Blob(chunks, { type: 'video/webm' });
+            const videoBlob = new Blob(chunks, { type: 'video/mp2t' });
 
             // Save video to IndexedDB
             await this.saveVideo(itemId, videoBlob);
