@@ -50,43 +50,26 @@ class DownloadManager {
     
     /**
      * Handle successful background download
+     * Note: Service worker already saved to IndexedDB, we just update local state
      */
     async handleBackgroundDownloadComplete(itemId, data) {
         const pending = this.pendingDownloads.get(itemId);
-        if (!pending) return;
         
-        try {
-            // Save video to IndexedDB
-            await this.saveVideo(itemId, data.videoBlob);
-            
-            // Save thumbnail if available
-            if (data.thumbnailBlob) {
-                await this.saveThumbnail(itemId, data.thumbnailBlob);
-            }
-            
-            // Update metadata
-            await this.saveMetadata({
-                itemId: itemId,
-                item: pending.item,
-                status: 'complete',
-                downloadedAt: Date.now(),
-                size: data.size
-            });
-            
-            this.downloadProgress.set(itemId, 100);
-            this.notify('downloadComplete', { itemId, item: pending.item, size: data.size });
-            
-            console.log('Download complete:', pending.item.Name || itemId);
-            
-        } catch (error) {
-            console.error('Failed to save download:', error);
-            this.notify('downloadError', { itemId, error: error.message });
-            await this.deleteDownload(itemId);
-        } finally {
-            this.activeDownloads.delete(itemId);
-            this.downloadProgress.delete(itemId);
-            this.pendingDownloads.delete(itemId);
-        }
+        // Service worker already saved everything to IndexedDB
+        // We just need to update our local state and notify listeners
+        
+        this.downloadProgress.set(itemId, 100);
+        this.notify('downloadComplete', { 
+            itemId, 
+            item: pending?.item, 
+            size: data.size 
+        });
+        
+        console.log('Download complete:', pending?.item?.Name || itemId, `(${Math.round(data.size / 1024 / 1024)}MB)`);
+        
+        this.activeDownloads.delete(itemId);
+        this.downloadProgress.delete(itemId);
+        this.pendingDownloads.delete(itemId);
     }
     
     /**

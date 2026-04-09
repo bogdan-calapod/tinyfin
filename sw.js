@@ -3,7 +3,7 @@
  * Handles offline caching for Android PWA
  */
 
-const CACHE_VERSION = 'tinyfin-v1';
+const CACHE_VERSION = 'tinyfin-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;
 const API_CACHE = `${CACHE_VERSION}-api`;
@@ -239,18 +239,21 @@ self.addEventListener('message', (event) => {
         event.waitUntil(
             downloadVideoInBackground(event.data)
                 .then(result => {
-                    // Notify all clients of completion
+                    // Notify all clients of completion (no blobs - they're already in IndexedDB)
                     self.clients.matchAll().then(clients => {
                         clients.forEach(client => {
                             client.postMessage({
                                 type: 'DOWNLOAD_COMPLETE',
                                 itemId: event.data.itemId,
-                                ...result
+                                size: result.size
                             });
                         });
                     });
                 })
                 .catch(error => {
+                    // Clean up failed download
+                    deleteFromIndexedDB(event.data.itemId).catch(() => {});
+                    
                     self.clients.matchAll().then(clients => {
                         clients.forEach(client => {
                             client.postMessage({
@@ -265,20 +268,119 @@ self.addEventListener('message', (event) => {
     }
 });
 
+// ==================== IndexedDB Helper Functions ====================
+
+const DB_NAME = 'TinyFinDownloads';
+const DB_VERSION = 1;
+
 /**
- * Download video in service worker (survives tab switches)
+ * Open IndexedDB database
+ */
+function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            if (!db.objectStoreNames.contains('metadata')) {
+                const metadataStore = db.createObjectStore('metadata', { keyPath: 'itemId' });
+                metadataStore.createIndex('downloadedAt', 'downloadedAt', { unique: false });
+            }
+            
+            if (!db.objectStoreNames.contains('videos')) {
+                db.createObjectStore('videos', { keyPath: 'itemId' });
+            }
+            
+            if (!db.objectStoreNames.contains('thumbnails')) {
+                db.createObjectStore('thumbnails', { keyPath: 'itemId' });
+            }
+        };
+    });
+}
+
+/**
+ * Save video blob to IndexedDB
+ */
+async function saveVideoToIndexedDB(itemId, blob) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['videos'], 'readwrite');
+        const store = transaction.objectStore('videos');
+        const request = store.put({ itemId, blob });
+        
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+/**
+ * Save thumbnail blob to IndexedDB
+ */
+async function saveThumbnailToIndexedDB(itemId, blob) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['thumbnails'], 'readwrite');
+        const store = transaction.objectStore('thumbnails');
+        const request = store.put({ itemId, blob });
+        
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+/**
+ * Save metadata to IndexedDB
+ */
+async function saveMetadataToIndexedDB(metadata) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['metadata'], 'readwrite');
+        const store = transaction.objectStore('metadata');
+        const request = store.put(metadata);
+        
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+/**
+ * Delete item from IndexedDB (cleanup on error)
+ */
+async function deleteFromIndexedDB(itemId) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['metadata', 'videos', 'thumbnails'], 'readwrite');
+        
+        transaction.objectStore('metadata').delete(itemId);
+        transaction.objectStore('videos').delete(itemId);
+        transaction.objectStore('thumbnails').delete(itemId);
+        
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
+// ==================== Background Download ====================
+
+/**
+ * Download video in service worker and save directly to IndexedDB
  */
 async function downloadVideoInBackground(data) {
     const { itemId, streamUrl, thumbnailUrl, item, estimatedSize } = data;
     
     console.log('[SW] Starting background download:', item.Name || itemId);
     
-    // Download thumbnail first
-    let thumbnailBlob = null;
+    // Download and save thumbnail first
     if (thumbnailUrl) {
         try {
             const thumbResponse = await fetch(thumbnailUrl);
-            thumbnailBlob = await thumbResponse.blob();
+            const thumbnailBlob = await thumbResponse.blob();
+            await saveThumbnailToIndexedDB(itemId, thumbnailBlob);
+            console.log('[SW] Thumbnail saved');
         } catch (e) {
             console.warn('[SW] Failed to download thumbnail:', e);
         }
@@ -329,14 +431,25 @@ async function downloadVideoInBackground(data) {
         }
     }
     
-    // Combine chunks
+    // Combine chunks into blob
     const videoBlob = new Blob(chunks, { type: 'video/mp4' });
+    const videoSize = videoBlob.size;
     
-    console.log('[SW] Download complete:', item.Name || itemId, `(${Math.round(videoBlob.size / 1024 / 1024)}MB)`);
+    console.log('[SW] Video downloaded, saving to IndexedDB:', `${Math.round(videoSize / 1024 / 1024)}MB`);
     
-    return {
-        videoBlob,
-        thumbnailBlob,
-        size: videoBlob.size
-    };
+    // Save video to IndexedDB
+    await saveVideoToIndexedDB(itemId, videoBlob);
+    
+    // Save metadata
+    await saveMetadataToIndexedDB({
+        itemId: itemId,
+        item: item,
+        status: 'complete',
+        downloadedAt: Date.now(),
+        size: videoSize
+    });
+    
+    console.log('[SW] Download complete:', item.Name || itemId);
+    
+    return { size: videoSize };
 }
