@@ -192,14 +192,25 @@ class JellyfinAPI {
             clearTimeout(timeoutId);
             
             if (!response.ok) {
-                throw new Error('Session invalid');
+                // Only clear credentials on auth errors (401/403)
+                // Other errors (500, etc.) might be temporary server issues
+                if (response.status === 401 || response.status === 403) {
+                    console.log('Session expired, clearing credentials');
+                    this.clearCredentials();
+                    return false;
+                }
+                // For other errors, assume session might still be valid
+                // but server is having issues - keep credentials
+                console.log('Server error during validation:', response.status);
+                return true; // Optimistically assume valid, let app try to work
             }
             
             return true;
         } catch (error) {
-            console.log('Session validation failed:', error.message);
-            this.clearCredentials();
-            return false;
+            // Network errors (offline, timeout, etc.) - don't clear credentials
+            // User might just be offline, credentials could still be valid
+            console.log('Session validation failed (network issue?):', error.message);
+            return true; // Keep credentials, let app work offline
         }
     }
 

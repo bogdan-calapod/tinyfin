@@ -680,7 +680,7 @@ body {
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
 
-.logout-btn, .close-modal-btn {
+.settings-action-btn, .logout-btn, .close-modal-btn {
     width: 100px;
     height: 100px;
     border: none;
@@ -690,8 +690,14 @@ body {
     transition: transform 0.2s ease;
 }
 
-.logout-btn:active, .close-modal-btn:active {
+.settings-action-btn:active, .logout-btn:active, .close-modal-btn:active {
     transform: scale(0.9);
+}
+
+.modal-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 /* ==================== PLACEHOLDER/EMPTY STATES ==================== */

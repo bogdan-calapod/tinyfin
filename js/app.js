@@ -35,6 +35,7 @@ class TinyFinApp {
         // Settings modal
         this.settingsModal = document.getElementById('settings-modal');
         this.logoutBtn = document.getElementById('logout-btn');
+        this.clearDownloadsBtn = document.getElementById('clear-downloads-btn');
         this.closeSettingsBtn = document.getElementById('close-settings');
         
         // State
@@ -280,8 +281,11 @@ class TinyFinApp {
     }
     
     /**
-     * Get a download-friendly stream URL (progressive MP4, not HLS)
-     * Using 360p for smaller file sizes and faster downloads
+     * Get a download-friendly stream URL
+     * 
+     * Uses WebM container with VP8/Vorbis which supports streaming writes
+     * (no moov atom issue like MP4). This allows transcoding to complete
+     * properly even when downloaded progressively.
      */
     getDownloadStreamUrl(itemId, mediaSourceId, playSessionId, audioStreamIndex) {
         const params = new URLSearchParams({
@@ -291,30 +295,26 @@ class TinyFinApp {
             api_key: jellyfinAPI.accessToken,
             DeviceId: jellyfinAPI.deviceId,
             
-            // Video settings - 360p (good enough for tablet, much smaller files)
-            VideoCodec: 'h264',
+            // Use WebM - better for progressive download (no moov atom issue)
+            Container: 'webm',
+            VideoCodec: 'vp8',
+            AudioCodec: 'vorbis',
+            
+            // Video settings - 360p
             MaxWidth: 640,
             MaxHeight: 360,
-            VideoBitRate: 800000,  // 800 kbps video
+            VideoBitRate: 800000,
             
             // Audio settings
-            AudioCodec: 'aac',
-            AudioBitRate: 96000,   // 96 kbps audio (still good quality)
-            MaxAudioChannels: 2,
-            
-            // Container - progressive MP4
-            Container: 'mp4',
-            
-            // Context
-            Context: 'Static',
-            Static: 'false' // Transcode to our specs
+            AudioBitRate: 96000,
+            MaxAudioChannels: 2
         });
         
         if (audioStreamIndex !== null) {
             params.set('AudioStreamIndex', audioStreamIndex);
         }
         
-        return `${jellyfinAPI.serverUrl}/Videos/${itemId}/stream.mp4?${params}`;
+        return `${jellyfinAPI.serverUrl}/Videos/${itemId}/stream.webm?${params}`;
     }
     
     /**
@@ -360,6 +360,7 @@ class TinyFinApp {
         // Settings events
         this.settingsBtn.addEventListener('click', () => this.showSettings());
         this.logoutBtn.addEventListener('click', () => this.handleLogout());
+        this.clearDownloadsBtn.addEventListener('click', () => this.handleClearDownloads());
         this.closeSettingsBtn.addEventListener('click', () => this.hideSettings());
         this.settingsModal.addEventListener('click', (e) => {
             if (e.target === this.settingsModal) this.hideSettings();
@@ -373,7 +374,11 @@ class TinyFinApp {
         });
         this.backBtn.addEventListener('click', () => this.exitPlayer());
         
-        this.videoPlayer.addEventListener('play', () => this.updatePlayPauseIcon(true));
+        this.videoPlayer.addEventListener('play', () => {
+            this.updatePlayPauseIcon(true);
+            // Hide overlay when video starts playing
+            this.playerOverlay.classList.remove('visible');
+        });
         this.videoPlayer.addEventListener('pause', () => this.updatePlayPauseIcon(false));
         this.videoPlayer.addEventListener('ended', () => this.handleVideoEnded());
         
@@ -460,6 +465,8 @@ class TinyFinApp {
 
     showPlayer() {
         this.showScreen(this.playerScreen);
+        // Reset overlay state - hide it initially
+        this.playerOverlay.classList.remove('visible');
         this.swipeHint.classList.add('visible');
         setTimeout(() => this.swipeHint.classList.remove('visible'), 5000);
     }
@@ -506,6 +513,23 @@ class TinyFinApp {
         this.hideSettings();
         this.passwordInput.value = '';
         this.showSetup();
+    }
+    
+    async handleClearDownloads() {
+        try {
+            await downloadManager.clearAllDownloads();
+            this.downloadedItemIds.clear();
+            
+            // Refresh if viewing downloads
+            if (this.currentFilter === 'downloads') {
+                this.loadContent();
+            }
+            
+            this.hideSettings();
+            console.log('All downloads cleared');
+        } catch (error) {
+            console.error('Failed to clear downloads:', error);
+        }
     }
 
     showError(message) {
@@ -1209,6 +1233,8 @@ class TinyFinApp {
             try {
                 await this.videoPlayer.play();
                 this.hideBuffering();
+                // Ensure overlay is hidden on successful autoplay
+                this.playerOverlay.classList.remove('visible');
             } catch (e) {
                 console.log('Autoplay blocked, showing play button');
                 this.hideBuffering();
@@ -1269,6 +1295,8 @@ class TinyFinApp {
             try {
                 await this.videoPlayer.play();
                 this.hideBuffering();
+                // Ensure overlay is hidden on successful autoplay
+                this.playerOverlay.classList.remove('visible');
             } catch (e) {
                 console.log('Autoplay blocked, showing play button');
                 this.hideBuffering();

@@ -138,12 +138,21 @@
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal hidden">
         <div class="modal-content">
-            <button id="logout-btn" class="logout-btn">
+            <!-- Clear Downloads Button (trash icon) -->
+            <button id="clear-downloads-btn" class="settings-action-btn">
+                <svg viewBox="0 0 24 24" width="64" height="64">
+                    <circle cx="12" cy="12" r="11" fill="#FF9800"/>
+                    <path d="M9 9v7M12 9v7M15 9v7M7 7h10M9 7V5h6v2" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <!-- Logout Button (X icon) -->
+            <button id="logout-btn" class="settings-action-btn">
                 <svg viewBox="0 0 24 24" width="64" height="64">
                     <circle cx="12" cy="12" r="11" fill="#f44336"/>
                     <path d="M9 9l6 6M15 9l-6 6" stroke="white" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </button>
+            <!-- Close Button -->
             <button id="close-settings" class="close-modal-btn">
                 <svg viewBox="0 0 24 24" width="48" height="48">
                     <circle cx="12" cy="12" r="10" fill="#607D8B"/>
