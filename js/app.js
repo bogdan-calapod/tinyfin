@@ -382,12 +382,6 @@ class TinyFinApp {
         this.videoPlayer.addEventListener('pause', () => this.updatePlayPauseIcon(false));
         this.videoPlayer.addEventListener('ended', () => this.handleVideoEnded());
         
-        // Buffering events
-        this.videoPlayer.addEventListener('waiting', () => this.showBuffering());
-        this.videoPlayer.addEventListener('playing', () => this.hideBuffering());
-        this.videoPlayer.addEventListener('canplay', () => this.hideBuffering());
-        this.videoPlayer.addEventListener('stalled', () => this.showBuffering());
-        
         // Drawer swipe handling
         this.playerScreen.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
         this.playerScreen.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
@@ -1117,11 +1111,6 @@ class TinyFinApp {
                 this.hls.loadSource(streamUrl);
                 this.hls.attachMedia(this.videoPlayer);
                 
-                // Handle buffering state
-                this.hls.on(Hls.Events.FRAG_BUFFERED, () => {
-                    this.hideBuffering();
-                });
-                
                 this.hls.on(Hls.Events.ERROR, (event, data) => {
                     console.warn('HLS error:', data.type, data.details);
                     
@@ -1223,21 +1212,18 @@ class TinyFinApp {
 
             console.log('Playing:', streamUrl, 'HLS:', isHls, 'Audio:', audioStreamIndex);
 
-            // Show player with buffering spinner immediately
+            // Show player
             this.showPlayer();
-            this.showBuffering();
 
             // Load the video source
             await this.loadVideoSource(streamUrl, isHls);
             
             try {
                 await this.videoPlayer.play();
-                this.hideBuffering();
                 // Ensure overlay is hidden on successful autoplay
                 this.playerOverlay.classList.remove('visible');
             } catch (e) {
                 console.log('Autoplay blocked, showing play button');
-                this.hideBuffering();
                 // Autoplay might be blocked, show play button
                 this.playerOverlay.classList.add('visible');
             }
@@ -1287,19 +1273,16 @@ class TinyFinApp {
             
             // Show player
             this.showPlayer();
-            this.showBuffering();
             
             // Set video source directly (no HLS needed for downloaded content)
             this.videoPlayer.src = videoUrl;
             
             try {
                 await this.videoPlayer.play();
-                this.hideBuffering();
                 // Ensure overlay is hidden on successful autoplay
                 this.playerOverlay.classList.remove('visible');
             } catch (e) {
                 console.log('Autoplay blocked, showing play button');
-                this.hideBuffering();
                 this.playerOverlay.classList.add('visible');
             }
             
