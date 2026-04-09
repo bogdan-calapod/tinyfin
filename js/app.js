@@ -57,6 +57,7 @@ class TinyFinApp {
         
         // Playback state
         this.isStartingPlayback = false;
+        this.offlineHlsUrls = null;  // For cleanup of offline HLS blob URLs
         
         // Download state - track which items are downloaded (loaded on init)
         this.downloadedItemIds = new Set();
@@ -262,18 +263,17 @@ class TinyFinApp {
             const mediaSource = playbackInfo.MediaSources[0];
             const playSessionId = playbackInfo.PlaySessionId;
             
-            // Find preferred audio stream
+            // Find preferred audio stream (Romanian if available)
             const audioStreamIndex = jellyfinAPI.findPreferredAudioStream(mediaSource);
             
-            // For download, we want a direct MP4 stream (not HLS)
-            // Use a lower bitrate progressive download
-            const streamUrl = this.getDownloadStreamUrl(itemId, mediaSource.Id, playSessionId, audioStreamIndex);
+            // Get HLS manifest URL - we'll download all segments
+            const hlsUrl = this.getDownloadHlsUrl(itemId, mediaSource.Id, playSessionId, audioStreamIndex);
             
             // Get thumbnail URL
             const thumbnailUrl = jellyfinAPI.getThumbUrl(item, { width: 400, height: 225 });
             
-            // Start download
-            downloadManager.downloadItem(item, streamUrl, thumbnailUrl);
+            // Start HLS download (downloads all segments and combines them)
+            downloadManager.downloadHlsVideo(item, hlsUrl, thumbnailUrl);
             
         } catch (error) {
             console.error('Failed to start download:', error);
@@ -281,13 +281,13 @@ class TinyFinApp {
     }
     
     /**
-     * Get a download-friendly stream URL
-     * 
-     * Uses MP4/H.264 with hardware acceleration (QSV).
-     * We use TS container for download since it handles progressive writes better,
-     * then store as MP4 mime type (browsers handle this fine).
+     * Get HLS manifest URL for downloading
+     * We'll download all HLS segments and combine them - this ensures:
+     * - H.264/AAC with hardware transcoding (fast)
+     * - Romanian audio track selected
+     * - TS segments that play correctly when combined
      */
-    getDownloadStreamUrl(itemId, mediaSourceId, playSessionId, audioStreamIndex) {
+    getDownloadHlsUrl(itemId, mediaSourceId, playSessionId, audioStreamIndex) {
         const params = new URLSearchParams({
             UserId: jellyfinAPI.userId,
             MediaSourceId: mediaSourceId,
@@ -295,27 +295,28 @@ class TinyFinApp {
             api_key: jellyfinAPI.accessToken,
             DeviceId: jellyfinAPI.deviceId,
             
-            // Use TS container - streams properly without moov atom issues
-            Container: 'ts',
+            // Video settings - 360p
             VideoCodec: 'h264',
-            AudioCodec: 'aac',
-            
-            // Video settings - 360p for fast transcoding
             MaxWidth: 640,
             MaxHeight: 360,
             VideoBitRate: 800000,
             
             // Audio settings
+            AudioCodec: 'aac',
             AudioBitRate: 96000,
             MaxAudioChannels: 2,
-            TranscodingMaxAudioChannels: 2
+            TranscodingMaxAudioChannels: 2,
+            
+            // HLS settings
+            SegmentContainer: 'ts',
+            MinSegments: 1
         });
         
         if (audioStreamIndex !== null) {
             params.set('AudioStreamIndex', audioStreamIndex);
         }
         
-        return `${jellyfinAPI.serverUrl}/Videos/${itemId}/stream.ts?${params}`;
+        return `${jellyfinAPI.serverUrl}/Videos/${itemId}/master.m3u8?${params}`;
     }
     
     /**
@@ -1249,25 +1250,21 @@ class TinyFinApp {
     }
     
     /**
-     * Play a downloaded item from local storage
+     * Play a downloaded item from local storage using HLS.js
      */
     async playDownloadedItem(itemId) {
         try {
             console.log('Playing downloaded item:', itemId);
             
-            // Get video blob URL
-            const videoUrl = await downloadManager.getVideoUrl(itemId);
-            if (!videoUrl) {
-                throw new Error('Downloaded video not found');
-            }
-            
             // Get item metadata from download manager
             const downloadedItems = await downloadManager.getDownloadedItems();
             const downloadedItem = downloadedItems.find(d => d.itemId === itemId);
             
-            if (downloadedItem) {
-                this.currentItem = downloadedItem.item;
+            if (!downloadedItem) {
+                throw new Error('Downloaded item metadata not found');
             }
+            
+            this.currentItem = downloadedItem.item;
             
             // No playback info for offline - we won't report progress
             this.playbackInfo = null;
@@ -1275,8 +1272,31 @@ class TinyFinApp {
             // Show player
             this.showPlayer();
             
-            // Set video source directly (no HLS needed for downloaded content)
-            this.videoPlayer.src = videoUrl;
+            // Check if this is an HLS download (new format) or legacy single file
+            if (downloadedItem.isHls) {
+                // Get HLS playback URLs (manifest + segment blob URLs)
+                const hlsUrls = await downloadManager.getHlsPlaybackUrls(itemId);
+                
+                if (!hlsUrls) {
+                    throw new Error('Could not generate HLS playback URLs');
+                }
+                
+                // Store for cleanup later
+                this.offlineHlsUrls = hlsUrls;
+                
+                console.log('Playing offline HLS:', hlsUrls.manifestUrl);
+                
+                // Use HLS.js to play the local manifest
+                await this.loadVideoSource(hlsUrls.manifestUrl, true);
+                
+            } else {
+                // Legacy: single file download
+                const videoUrl = await downloadManager.getVideoUrl(itemId);
+                if (!videoUrl) {
+                    throw new Error('Downloaded video not found');
+                }
+                this.videoPlayer.src = videoUrl;
+            }
             
             try {
                 await this.videoPlayer.play();
@@ -1457,10 +1477,16 @@ class TinyFinApp {
         this.destroyHls();
         this.videoPlayer.pause();
         
-        // Revoke blob URL if it was a downloaded video
+        // Revoke blob URL if it was a downloaded video (legacy single file)
         const currentSrc = this.videoPlayer.src;
         if (currentSrc && currentSrc.startsWith('blob:')) {
             URL.revokeObjectURL(currentSrc);
+        }
+        
+        // Clean up offline HLS URLs if present
+        if (this.offlineHlsUrls) {
+            this.offlineHlsUrls.revokeAll();
+            this.offlineHlsUrls = null;
         }
         
         this.videoPlayer.removeAttribute('src');

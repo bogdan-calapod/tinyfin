@@ -3,7 +3,7 @@
  * Handles offline caching for Android PWA
  */
 
-const CACHE_VERSION = 'tinyfin-v4';
+const CACHE_VERSION = 'tinyfin-v7';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;
 const API_CACHE = `${CACHE_VERSION}-api`;
@@ -432,8 +432,8 @@ async function downloadVideoInBackground(data) {
     }
     
     // Combine chunks into blob
-    // TS container with H.264/AAC - browsers can play this
-    const videoBlob = new Blob(chunks, { type: 'video/mp2t' });
+    // Original file - likely MP4 or MKV with H.264
+    const videoBlob = new Blob(chunks, { type: 'video/mp4' });
     const videoSize = videoBlob.size;
     
     console.log('[SW] Video downloaded, saving to IndexedDB:', `${Math.round(videoSize / 1024 / 1024)}MB`);

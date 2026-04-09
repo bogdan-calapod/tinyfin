@@ -6,7 +6,7 @@
 class DownloadManager {
     constructor() {
         this.dbName = 'TinyFinDownloads';
-        this.dbVersion = 1;
+        this.dbVersion = 2;  // Bump version to add segments store
         this.db = null;
         this.activeDownloads = new Set(); // itemId set for tracking
         this.downloadProgress = new Map(); // itemId -> progress (0-100)
@@ -113,7 +113,7 @@ class DownloadManager {
                     metadataStore.createIndex('downloadedAt', 'downloadedAt', { unique: false });
                 }
 
-                // Store for video blobs (chunks)
+                // Store for video blobs (legacy - single file downloads)
                 if (!db.objectStoreNames.contains('videos')) {
                     db.createObjectStore('videos', { keyPath: 'itemId' });
                 }
@@ -121,6 +121,13 @@ class DownloadManager {
                 // Store for thumbnails
                 if (!db.objectStoreNames.contains('thumbnails')) {
                     db.createObjectStore('thumbnails', { keyPath: 'itemId' });
+                }
+                
+                // Store for HLS segments (new in v2)
+                // Key: itemId + segmentIndex, Value: segment blob
+                if (!db.objectStoreNames.contains('segments')) {
+                    const segmentsStore = db.createObjectStore('segments', { keyPath: ['itemId', 'index'] });
+                    segmentsStore.createIndex('itemId', 'itemId', { unique: false });
                 }
             };
         });
@@ -340,7 +347,7 @@ class DownloadManager {
             }
 
             // Combine chunks into a single blob
-            const videoBlob = new Blob(chunks, { type: 'video/mp2t' });
+            const videoBlob = new Blob(chunks, { type: 'video/mp4' });
 
             // Save video to IndexedDB
             await this.saveVideo(itemId, videoBlob);
@@ -371,6 +378,258 @@ class DownloadManager {
     }
 
     /**
+     * Download video via HLS - stores segments individually for HLS.js playback
+     * This ensures proper transcoding with Romanian audio
+     */
+    async downloadHlsVideo(item, hlsUrl, thumbnailUrl) {
+        if (!this.db) await this.init();
+
+        const itemId = item.Id;
+
+        // Check if already downloading or downloaded
+        if (this.isDownloading(itemId)) {
+            console.log('Already downloading:', itemId);
+            return;
+        }
+
+        if (await this.isDownloaded(itemId)) {
+            console.log('Already downloaded:', itemId);
+            return;
+        }
+
+        console.log('Starting HLS download:', item.Name || itemId);
+
+        // Mark as downloading
+        this.activeDownloads.add(itemId);
+        this.downloadProgress.set(itemId, 0);
+
+        // Save initial metadata
+        await this.saveMetadata({
+            itemId: itemId,
+            item: item,
+            status: 'downloading',
+            downloadedAt: null,
+            size: 0,
+            segmentCount: 0
+        });
+
+        this.notify('downloadStarted', { itemId, item });
+
+        try {
+            // Download thumbnail first
+            if (thumbnailUrl) {
+                try {
+                    const thumbResponse = await fetch(thumbnailUrl);
+                    const thumbBlob = await thumbResponse.blob();
+                    await this.saveThumbnail(itemId, thumbBlob);
+                } catch (e) {
+                    console.warn('Failed to download thumbnail:', e);
+                }
+            }
+
+            // Fetch master playlist
+            console.log('Fetching HLS manifest:', hlsUrl);
+            const masterResponse = await fetch(hlsUrl);
+            const masterPlaylist = await masterResponse.text();
+            
+            // Parse to find the media playlist URL
+            const lines = masterPlaylist.split('\n');
+            let mediaPlaylistUrl = null;
+            
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed && !trimmed.startsWith('#')) {
+                    if (trimmed.startsWith('http')) {
+                        mediaPlaylistUrl = trimmed;
+                    } else {
+                        const baseUrl = hlsUrl.substring(0, hlsUrl.lastIndexOf('/') + 1);
+                        mediaPlaylistUrl = baseUrl + trimmed;
+                    }
+                    break;
+                }
+            }
+
+            if (!mediaPlaylistUrl) {
+                if (masterPlaylist.includes('#EXTINF:')) {
+                    mediaPlaylistUrl = hlsUrl;
+                } else {
+                    throw new Error('Could not find media playlist in HLS manifest');
+                }
+            }
+
+            // Fetch media playlist
+            let mediaPlaylist = masterPlaylist;
+            if (mediaPlaylistUrl !== hlsUrl) {
+                console.log('Fetching media playlist:', mediaPlaylistUrl);
+                const mediaResponse = await fetch(mediaPlaylistUrl);
+                mediaPlaylist = await mediaResponse.text();
+            }
+
+            // Parse segment info from media playlist
+            // We need to preserve EXTINF durations for rebuilding the manifest
+            const segmentInfos = [];
+            const mediaLines = mediaPlaylist.split('\n');
+            const mediaBaseUrl = mediaPlaylistUrl.substring(0, mediaPlaylistUrl.lastIndexOf('/') + 1);
+            
+            let currentDuration = null;
+            for (const line of mediaLines) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('#EXTINF:')) {
+                    // Extract duration
+                    currentDuration = trimmed.substring(8).split(',')[0];
+                } else if (trimmed && !trimmed.startsWith('#')) {
+                    const url = trimmed.startsWith('http') ? trimmed : mediaBaseUrl + trimmed;
+                    segmentInfos.push({
+                        url: url,
+                        duration: currentDuration || '6.0'
+                    });
+                    currentDuration = null;
+                }
+            }
+
+            console.log(`Found ${segmentInfos.length} segments to download`);
+
+            if (segmentInfos.length === 0) {
+                throw new Error('No segments found in HLS playlist');
+            }
+
+            // Download and store each segment individually
+            let totalSize = 0;
+            
+            for (let i = 0; i < segmentInfos.length; i++) {
+                const segmentInfo = segmentInfos[i];
+                
+                const segmentResponse = await fetch(segmentInfo.url);
+                if (!segmentResponse.ok) {
+                    throw new Error(`Failed to download segment ${i}: ${segmentResponse.status}`);
+                }
+                
+                const segmentBlob = await segmentResponse.blob();
+                totalSize += segmentBlob.size;
+                
+                // Save segment to IndexedDB with its duration
+                await this.saveSegment(itemId, i, segmentBlob, segmentInfo.duration);
+                
+                // Update progress
+                const progress = Math.round(((i + 1) / segmentInfos.length) * 100);
+                this.downloadProgress.set(itemId, progress);
+                this.notify('downloadProgress', { 
+                    itemId, 
+                    progress, 
+                    downloadedSize: i + 1,
+                    totalSize: segmentInfos.length 
+                });
+            }
+
+            console.log('HLS download complete:', `${Math.round(totalSize / 1024 / 1024)}MB`, `${segmentInfos.length} segments`);
+
+            // Update metadata with final info
+            await this.saveMetadata({
+                itemId: itemId,
+                item: item,
+                status: 'complete',
+                downloadedAt: Date.now(),
+                size: totalSize,
+                segmentCount: segmentInfos.length,
+                isHls: true  // Flag to indicate HLS playback needed
+            });
+
+            this.downloadProgress.set(itemId, 100);
+            this.notify('downloadComplete', { itemId, item, size: totalSize });
+
+        } catch (error) {
+            console.error('HLS download failed:', error);
+            this.notify('downloadError', { itemId, error: error.message });
+            await this.deleteDownload(itemId);
+        } finally {
+            this.activeDownloads.delete(itemId);
+            this.downloadProgress.delete(itemId);
+        }
+    }
+    
+    /**
+     * Save a single HLS segment to IndexedDB
+     */
+    async saveSegment(itemId, index, blob, duration) {
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['segments'], 'readwrite');
+            const store = transaction.objectStore('segments');
+            const request = store.put({ 
+                itemId, 
+                index, 
+                blob, 
+                duration 
+            });
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+    
+    /**
+     * Get all segments for an item
+     */
+    async getSegments(itemId) {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['segments'], 'readonly');
+            const store = transaction.objectStore('segments');
+            const index = store.index('itemId');
+            const request = index.getAll(itemId);
+
+            request.onsuccess = () => {
+                // Sort by index
+                const segments = request.result.sort((a, b) => a.index - b.index);
+                resolve(segments);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+    
+    /**
+     * Generate a blob URL manifest for offline HLS playback
+     * Returns { manifestUrl, segmentUrls } - caller must revoke URLs when done
+     */
+    async getHlsPlaybackUrls(itemId) {
+        const segments = await this.getSegments(itemId);
+        
+        if (segments.length === 0) {
+            return null;
+        }
+        
+        // Create blob URLs for each segment
+        const segmentUrls = segments.map(seg => URL.createObjectURL(seg.blob));
+        
+        // Build m3u8 manifest pointing to blob URLs
+        let manifest = '#EXTM3U\n';
+        manifest += '#EXT-X-VERSION:3\n';
+        manifest += '#EXT-X-TARGETDURATION:10\n';
+        manifest += '#EXT-X-MEDIA-SEQUENCE:0\n';
+        
+        for (let i = 0; i < segments.length; i++) {
+            manifest += `#EXTINF:${segments[i].duration},\n`;
+            manifest += `${segmentUrls[i]}\n`;
+        }
+        
+        manifest += '#EXT-X-ENDLIST\n';
+        
+        // Create blob URL for the manifest itself
+        const manifestBlob = new Blob([manifest], { type: 'application/vnd.apple.mpegurl' });
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+        
+        return {
+            manifestUrl,
+            segmentUrls,
+            // Helper to clean up all URLs
+            revokeAll: () => {
+                URL.revokeObjectURL(manifestUrl);
+                segmentUrls.forEach(url => URL.revokeObjectURL(url));
+            }
+        };
+    }
+
+    /**
      * Cancel an active download
      * Note: Cannot cancel service worker downloads, but can clean up state
      */
@@ -387,10 +646,22 @@ class DownloadManager {
     }
 
     /**
-     * Delete a downloaded item
+     * Delete a downloaded item (including all HLS segments)
      */
     async deleteDownload(itemId) {
         if (!this.db) await this.init();
+
+        // First, delete all segments for this item
+        try {
+            const segments = await this.getSegments(itemId);
+            const segTransaction = this.db.transaction(['segments'], 'readwrite');
+            const segStore = segTransaction.objectStore('segments');
+            for (const seg of segments) {
+                segStore.delete([itemId, seg.index]);
+            }
+        } catch (e) {
+            console.warn('Error deleting segments:', e);
+        }
 
         const transaction = this.db.transaction(['metadata', 'videos', 'thumbnails'], 'readwrite');
 
