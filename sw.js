@@ -3,7 +3,7 @@
  * Handles offline caching for Android PWA
  */
 
-const CACHE_VERSION = 'tinyfin-v10';
+const CACHE_VERSION = 'tinyfin-v12';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;
 const API_CACHE = `${CACHE_VERSION}-api`;

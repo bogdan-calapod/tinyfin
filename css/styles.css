@@ -583,6 +583,30 @@ body {
     height: 60px;
 }
 
+/* Restart from beginning button */
+.restart-btn {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 70px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.restart-btn:active {
+    transform: translateX(-50%) scale(0.9);
+}
+
+.restart-btn svg {
+    width: 70px;
+    height: 70px;
+}
+
 /* .hidden handled by global rule */
 
 /* Back Button */
@@ -796,4 +820,86 @@ body {
     font-weight: bold;
     font-size: 18px;
     padding: 0 12px;
+}
+
+/* ==================== DELETE CONFIRMATION MODAL ==================== */
+.delete-confirm-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    padding: 40px;
+}
+
+.math-question {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 48px;
+    font-weight: bold;
+    color: #333;
+}
+
+.math-num {
+    width: 70px;
+    height: 70px;
+    background: #E3F2FD;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1976D2;
+}
+
+.math-op, .math-eq {
+    color: #666;
+}
+
+.math-answers {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.math-answer-btn {
+    width: 80px;
+    height: 80px;
+    border: none;
+    border-radius: 50%;
+    background: #4CAF50;
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.math-answer-btn:active {
+    transform: scale(0.9);
+}
+
+.math-answer-btn.wrong {
+    background: #f44336;
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-10px); }
+    40%, 80% { transform: translateX(10px); }
+}
+
+.cancel-delete-btn {
+    width: 60px;
+    height: 60px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.cancel-delete-btn:active {
+    transform: scale(0.9);
 }

@@ -27,6 +27,7 @@ class TinyFinApp {
         this.videoPlayer = document.getElementById('video-player');
         this.playerOverlay = document.getElementById('player-overlay');
         this.playPauseBtn = document.getElementById('play-pause-btn');
+        this.restartBtn = document.getElementById('restart-btn');
         this.backBtn = document.getElementById('back-btn');
         this.relatedDrawer = document.getElementById('related-drawer');
         this.drawerContent = document.getElementById('drawer-content');
@@ -37,6 +38,15 @@ class TinyFinApp {
         this.logoutBtn = document.getElementById('logout-btn');
         this.clearDownloadsBtn = document.getElementById('clear-downloads-btn');
         this.closeSettingsBtn = document.getElementById('close-settings');
+        
+        // Delete confirmation modal
+        this.deleteConfirmModal = document.getElementById('delete-confirm-modal');
+        this.mathNum1 = document.getElementById('math-num1');
+        this.mathNum2 = document.getElementById('math-num2');
+        this.mathAnswers = document.getElementById('math-answers');
+        this.cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        this.pendingDeleteItemId = null;
+        this.pendingDeleteAll = false;
         
         // State
         this.currentFilter = 'all';
@@ -58,6 +68,7 @@ class TinyFinApp {
         // Playback state
         this.isStartingPlayback = false;
         this.offlineHlsUrls = null;  // For cleanup of offline HLS blob URLs
+        this.localProgressInterval = null;  // For saving offline playback position
         
         // Download state - track which items are downloaded (loaded on init)
         this.downloadedItemIds = new Set();
@@ -324,21 +335,86 @@ class TinyFinApp {
      */
     handleLongPress(itemId) {
         if (this.downloadedItemIds.has(itemId)) {
-            this.showDeleteConfirmation(itemId);
+            this.promptDeleteConfirmation(itemId, false);
         }
     }
     
     /**
-     * Show delete confirmation for a download
+     * Show delete confirmation modal with math question
+     * @param {string|null} itemId - Item to delete, or null for all
+     * @param {boolean} deleteAll - Whether to delete all downloads
      */
-    async showDeleteConfirmation(itemId) {
-        // Simple confirm using a visual indicator - tap the downloaded badge again
-        // For now, just delete directly (can add confirmation modal later)
-        try {
-            await downloadManager.deleteDownload(itemId);
-        } catch (error) {
-            console.error('Failed to delete download:', error);
+    promptDeleteConfirmation(itemId, deleteAll = false) {
+        this.pendingDeleteItemId = itemId;
+        this.pendingDeleteAll = deleteAll;
+        
+        // Generate simple addition (numbers 1-5)
+        const num1 = Math.floor(Math.random() * 5) + 1;
+        const num2 = Math.floor(Math.random() * 5) + 1;
+        const correctAnswer = num1 + num2;
+        
+        this.mathNum1.textContent = num1;
+        this.mathNum2.textContent = num2;
+        
+        // Generate answer options (correct + 3 wrong)
+        const answers = new Set([correctAnswer]);
+        while (answers.size < 4) {
+            // Generate wrong answers close to correct
+            const wrong = correctAnswer + Math.floor(Math.random() * 5) - 2;
+            if (wrong > 0 && wrong !== correctAnswer) {
+                answers.add(wrong);
+            }
         }
+        
+        // Shuffle answers
+        const shuffled = [...answers].sort(() => Math.random() - 0.5);
+        
+        // Render answer buttons
+        this.mathAnswers.innerHTML = shuffled.map(answer => `
+            <button class="math-answer-btn" data-answer="${answer}" data-correct="${answer === correctAnswer}">
+                ${answer}
+            </button>
+        `).join('');
+        
+        // Add click handlers
+        this.mathAnswers.querySelectorAll('.math-answer-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.handleMathAnswer(btn));
+        });
+        
+        // Show modal
+        this.deleteConfirmModal.classList.remove('hidden');
+        this.hideSettings(); // Close settings if open
+    }
+    
+    /**
+     * Handle math answer click
+     */
+    async handleMathAnswer(btn) {
+        const isCorrect = btn.dataset.correct === 'true';
+        
+        if (isCorrect) {
+            // Correct! Proceed with deletion
+            this.hideDeleteConfirmation();
+            
+            if (this.pendingDeleteAll) {
+                await this.executeClearDownloads();
+            } else if (this.pendingDeleteItemId) {
+                await this.executeDeleteDownload(this.pendingDeleteItemId);
+            }
+        } else {
+            // Wrong answer - shake the button
+            btn.classList.add('wrong');
+            setTimeout(() => btn.classList.remove('wrong'), 500);
+        }
+    }
+    
+    /**
+     * Hide delete confirmation modal
+     */
+    hideDeleteConfirmation() {
+        this.deleteConfirmModal.classList.add('hidden');
+        this.pendingDeleteItemId = null;
+        this.pendingDeleteAll = false;
     }
 
     bindEvents() {
@@ -374,11 +450,14 @@ class TinyFinApp {
         // Settings events
         this.settingsBtn.addEventListener('click', () => this.showSettings());
         this.logoutBtn.addEventListener('click', () => this.handleLogout());
-        this.clearDownloadsBtn.addEventListener('click', () => this.handleClearDownloads());
+        this.clearDownloadsBtn.addEventListener('click', () => this.promptDeleteConfirmation(null, true));
         this.closeSettingsBtn.addEventListener('click', () => this.hideSettings());
         this.settingsModal.addEventListener('click', (e) => {
             if (e.target === this.settingsModal) this.hideSettings();
         });
+        
+        // Delete confirmation modal events
+        this.cancelDeleteBtn.addEventListener('click', () => this.hideDeleteConfirmation());
         
         // Player events
         this.videoPlayer.addEventListener('click', () => this.toggleOverlay());
@@ -387,13 +466,24 @@ class TinyFinApp {
             this.togglePlayPause();
         });
         this.backBtn.addEventListener('click', () => this.exitPlayer());
+        this.restartBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleRestart();
+        });
         
         this.videoPlayer.addEventListener('play', () => {
             this.updatePlayPauseIcon(true);
-            // Hide overlay when video starts playing
+            // Hide overlay and restart button when video starts playing
             this.playerOverlay.classList.remove('visible');
+            this.hideRestartButton();
         });
-        this.videoPlayer.addEventListener('pause', () => this.updatePlayPauseIcon(false));
+        this.videoPlayer.addEventListener('pause', () => {
+            this.updatePlayPauseIcon(false);
+            // Show restart button if applicable (long video, not at beginning)
+            if (this.shouldShowRestartButton()) {
+                this.showRestartButton();
+            }
+        });
         this.videoPlayer.addEventListener('ended', () => this.handleVideoEnded());
         
         // Drawer swipe handling
@@ -479,6 +569,8 @@ class TinyFinApp {
         this.showScreen(this.playerScreen);
         // Reset overlay state - hide it initially
         this.playerOverlay.classList.remove('visible');
+        // Hide restart button initially
+        this.hideRestartButton();
         this.swipeHint.classList.add('visible');
         setTimeout(() => this.swipeHint.classList.remove('visible'), 5000);
     }
@@ -514,7 +606,7 @@ class TinyFinApp {
             this.showHome();
         } catch (error) {
             console.error('Connection failed:', error);
-            this.showError('Connection failed. Please check your details.');
+            this.showError(error.message || 'Connection failed');
         } finally {
             this.setLoading(false);
         }
@@ -527,7 +619,10 @@ class TinyFinApp {
         this.showSetup();
     }
     
-    async handleClearDownloads() {
+    /**
+     * Execute clearing all downloads (called after confirmation)
+     */
+    async executeClearDownloads() {
         try {
             await downloadManager.clearAllDownloads();
             this.downloadedItemIds.clear();
@@ -537,7 +632,6 @@ class TinyFinApp {
                 this.loadContent();
             }
             
-            this.hideSettings();
             console.log('All downloads cleared');
         } catch (error) {
             console.error('Failed to clear downloads:', error);
@@ -783,9 +877,16 @@ class TinyFinApp {
     }
     
     /**
-     * Handle deleting a single download
+     * Handle deleting a single download (shows confirmation first)
      */
-    async handleDeleteDownload(itemId) {
+    handleDeleteDownload(itemId) {
+        this.promptDeleteConfirmation(itemId, false);
+    }
+    
+    /**
+     * Execute deleting a single download (called after confirmation)
+     */
+    async executeDeleteDownload(itemId) {
         try {
             await downloadManager.deleteDownload(itemId);
             this.downloadedItemIds.delete(itemId);
@@ -1314,11 +1415,29 @@ class TinyFinApp {
 
             console.log('Playing:', streamUrl, 'HLS:', isHls, 'Audio:', audioStreamIndex);
 
+            // Check for resume position (only for videos > 30 minutes)
+            const resumePositionTicks = this.currentItem.UserData?.PlaybackPositionTicks || 0;
+            const durationTicks = this.currentItem.RunTimeTicks || 0;
+            const durationMinutes = durationTicks / 10000000 / 60;
+            const resumePositionSeconds = resumePositionTicks / 10000000;
+            
+            // Only resume if video is > 30 min and has a saved position > 30 seconds
+            const shouldResume = durationMinutes > 30 && resumePositionSeconds > 30;
+            
+            if (shouldResume) {
+                console.log(`Resuming at ${Math.round(resumePositionSeconds / 60)}min (video is ${Math.round(durationMinutes)}min)`);
+            }
+
             // Show player
             this.showPlayer();
 
             // Load the video source
             await this.loadVideoSource(streamUrl, isHls);
+            
+            // Set resume position if applicable
+            if (shouldResume) {
+                this.videoPlayer.currentTime = resumePositionSeconds;
+            }
             
             try {
                 await this.videoPlayer.play();
@@ -1366,8 +1485,18 @@ class TinyFinApp {
             
             this.currentItem = downloadedItem.item;
             
-            // No playback info for offline - we won't report progress
+            // No playback info for offline - we won't report progress to server
             this.playbackInfo = null;
+            
+            // Check for local resume position (for videos > 30 min)
+            const durationTicks = this.currentItem.RunTimeTicks || 0;
+            const durationMinutes = durationTicks / 10000000 / 60;
+            const savedPosition = this.getLocalPlaybackPosition(itemId);
+            const shouldResume = durationMinutes > 30 && savedPosition > 30;
+            
+            if (shouldResume) {
+                console.log(`Resuming offline at ${Math.round(savedPosition / 60)}min`);
+            }
             
             // Show player
             this.showPlayer();
@@ -1397,6 +1526,14 @@ class TinyFinApp {
                 }
                 this.videoPlayer.src = videoUrl;
             }
+            
+            // Set resume position if applicable
+            if (shouldResume) {
+                this.videoPlayer.currentTime = savedPosition;
+            }
+            
+            // Start local progress saving for offline playback
+            this.startLocalProgressSaving();
             
             try {
                 await this.videoPlayer.play();
@@ -1506,6 +1643,48 @@ class TinyFinApp {
             this.videoPlayer.pause();
         }
     }
+    
+    /**
+     * Handle restart button click - seek to beginning and play
+     */
+    handleRestart() {
+        this.videoPlayer.currentTime = 0;
+        this.videoPlayer.play();
+        this.hideRestartButton();
+    }
+    
+    /**
+     * Check if restart button should be shown
+     * Only for long videos (> 30 min) with saved position (> 30 sec)
+     */
+    shouldShowRestartButton() {
+        if (!this.currentItem) return false;
+        
+        const durationTicks = this.currentItem.RunTimeTicks || 0;
+        const durationMinutes = durationTicks / 10000000 / 60;
+        const currentPosition = this.videoPlayer.currentTime;
+        
+        // Show restart if video is > 30 min and current position is > 30 seconds
+        return durationMinutes > 30 && currentPosition > 30;
+    }
+    
+    /**
+     * Show the restart button
+     */
+    showRestartButton() {
+        if (this.restartBtn) {
+            this.restartBtn.classList.remove('hidden');
+        }
+    }
+    
+    /**
+     * Hide the restart button
+     */
+    hideRestartButton() {
+        if (this.restartBtn) {
+            this.restartBtn.classList.add('hidden');
+        }
+    }
 
     updatePlayPauseIcon(isPlaying) {
         const playIcon = this.playPauseBtn.querySelector('.play-icon');
@@ -1576,7 +1755,17 @@ class TinyFinApp {
         }
 
         this.stopProgressReporting();
+        this.stopLocalProgressSaving();
         this.destroyHls();
+        
+        // Save final position for offline playback resume
+        if (this.currentItem && !this.playbackInfo) {
+            const position = Math.floor(this.videoPlayer.currentTime);
+            if (position > 30) { // Only save if watched more than 30 seconds
+                this.saveLocalPlaybackPosition(this.currentItem.Id, position);
+            }
+        }
+        
         this.videoPlayer.pause();
         
         // Revoke blob URL if it was a downloaded video (legacy single file)
@@ -1601,12 +1790,81 @@ class TinyFinApp {
     }
 
     handleVideoEnded() {
+        // Clear local playback position since video finished
+        if (this.currentItem) {
+            this.clearLocalPlaybackPosition(this.currentItem.Id);
+        }
+        
         // Auto-play next if available
         const firstRelated = this.drawerContent.querySelector('.content-card');
         if (firstRelated) {
             this.playItem(firstRelated.dataset.id);
         } else {
             this.exitPlayer();
+        }
+    }
+    
+    // ==================== LOCAL PLAYBACK POSITION (for offline) ====================
+    
+    /**
+     * Get saved playback position for an item (in seconds)
+     */
+    getLocalPlaybackPosition(itemId) {
+        try {
+            const positions = JSON.parse(localStorage.getItem('tinyfin_playbackPositions') || '{}');
+            return positions[itemId] || 0;
+        } catch (e) {
+            return 0;
+        }
+    }
+    
+    /**
+     * Save playback position for an item (in seconds)
+     */
+    saveLocalPlaybackPosition(itemId, positionSeconds) {
+        try {
+            const positions = JSON.parse(localStorage.getItem('tinyfin_playbackPositions') || '{}');
+            positions[itemId] = positionSeconds;
+            localStorage.setItem('tinyfin_playbackPositions', JSON.stringify(positions));
+        } catch (e) {
+            console.warn('Failed to save playback position:', e);
+        }
+    }
+    
+    /**
+     * Clear playback position for an item (when finished watching)
+     */
+    clearLocalPlaybackPosition(itemId) {
+        try {
+            const positions = JSON.parse(localStorage.getItem('tinyfin_playbackPositions') || '{}');
+            delete positions[itemId];
+            localStorage.setItem('tinyfin_playbackPositions', JSON.stringify(positions));
+        } catch (e) {
+            console.warn('Failed to clear playback position:', e);
+        }
+    }
+    
+    /**
+     * Start saving playback position periodically (for offline playback)
+     */
+    startLocalProgressSaving() {
+        this.stopLocalProgressSaving();
+        
+        this.localProgressInterval = setInterval(() => {
+            if (this.currentItem && !this.videoPlayer.paused) {
+                const position = Math.floor(this.videoPlayer.currentTime);
+                this.saveLocalPlaybackPosition(this.currentItem.Id, position);
+            }
+        }, 10000); // Save every 10 seconds
+    }
+    
+    /**
+     * Stop saving playback position
+     */
+    stopLocalProgressSaving() {
+        if (this.localProgressInterval) {
+            clearInterval(this.localProgressInterval);
+            this.localProgressInterval = null;
         }
     }
 
