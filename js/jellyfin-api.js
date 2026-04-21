@@ -532,7 +532,7 @@ class JellyfinAPI {
 
     /**
      * Find the preferred audio stream index
-     * Prefers Romanian, then falls back to default
+     * Prefers Romanian, then English, then falls back to default
      */
     findPreferredAudioStream(mediaSource) {
         console.log('MediaSource:', mediaSource);
@@ -552,11 +552,11 @@ class JellyfinAPI {
             return null;
         }
 
-        // Preferred languages in order
-        const preferredLanguages = ['rum', 'ron', 'ro', 'romanian'];
+        // Preferred languages in order: Romanian first
+        const romanianLanguages = ['rum', 'ron', 'ro', 'romanian'];
         
         // Look for Romanian audio
-        for (const lang of preferredLanguages) {
+        for (const lang of romanianLanguages) {
             const stream = audioStreams.find(s => 
                 s.Language?.toLowerCase() === lang ||
                 s.DisplayTitle?.toLowerCase().includes('romanian') ||
@@ -564,6 +564,20 @@ class JellyfinAPI {
             );
             if (stream) {
                 console.log('Found Romanian audio track:', stream.Index, stream.DisplayTitle || stream.Language);
+                return stream.Index;
+            }
+        }
+
+        // If no Romanian, look for English
+        const englishLanguages = ['eng', 'en', 'english'];
+        for (const lang of englishLanguages) {
+            const stream = audioStreams.find(s => 
+                s.Language?.toLowerCase() === lang ||
+                s.DisplayTitle?.toLowerCase().includes('english') ||
+                s.Title?.toLowerCase().includes('english')
+            );
+            if (stream) {
+                console.log('Found English audio track:', stream.Index, stream.DisplayTitle || stream.Language);
                 return stream.Index;
             }
         }
