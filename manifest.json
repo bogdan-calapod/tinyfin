@@ -4,7 +4,7 @@
   "description": "Kid-friendly Jellyfin client",
   "start_url": ".",
   "scope": ".",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#FF6B9D",
   "theme_color": "#FF6B9D",
