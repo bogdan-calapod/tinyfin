@@ -12,6 +12,7 @@
   "lang": "en",
   "dir": "ltr",
   "prefer_related_applications": false,
+  "display_override": ["fullscreen", "standalone"],
   "icons": [
     {
       "src": "assets/icon-192.svg",

@@ -903,3 +903,128 @@ body {
 .cancel-delete-btn:active {
     transform: scale(0.9);
 }
+
+/* ==================== ANDROID TV SUPPORT ==================== */
+
+/* TV mode - larger UI elements and focus states */
+.tv-mode {
+    cursor: none; /* Hide cursor in TV mode */
+}
+
+/* Focus indicator for TV navigation */
+.tv-focused {
+    outline: 4px solid #FFD700 !important;
+    outline-offset: 4px;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6) !important;
+    transform: scale(1.05) !important;
+    z-index: 100;
+    position: relative;
+}
+
+/* Smooth focus transitions */
+.tv-mode button,
+.tv-mode input,
+.tv-mode .content-card,
+.tv-mode .nav-btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, outline 0.2s ease;
+}
+
+/* Content cards - larger hit area for TV */
+.tv-mode .content-card {
+    cursor: pointer;
+}
+
+/* Navigation buttons - more prominent on TV */
+.tv-mode .nav-btn {
+    width: 90px;
+    height: 90px;
+}
+
+/* Setup form inputs - larger on TV */
+.tv-mode .setup-form input {
+    font-size: 24px;
+    padding: 24px 32px;
+}
+
+/* Connect button - larger on TV */
+.tv-mode .connect-button {
+    width: 100px;
+    height: 100px;
+}
+
+/* Player controls - more visible on TV */
+.tv-mode .play-pause-btn {
+    width: 120px;
+    height: 120px;
+}
+
+.tv-mode .back-btn {
+    width: 90px;
+    height: 90px;
+}
+
+/* Settings buttons - larger on TV */
+.tv-mode .settings-action-btn svg {
+    width: 80px;
+    height: 80px;
+}
+
+/* Math buttons - larger on TV */
+.tv-mode .math-answer-btn {
+    width: 120px;
+    height: 120px;
+    font-size: 48px;
+}
+
+/* Content grid - adjust columns for TV screens */
+@media (min-width: 1280px) {
+    .tv-mode .content-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 30px;
+        padding: 30px;
+    }
+}
+
+@media (min-width: 1920px) {
+    .tv-mode .content-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 40px;
+        padding: 40px;
+    }
+}
+
+/* Ensure focused elements are always visible */
+.tv-mode .tv-focused {
+    scroll-margin: 100px;
+}
+
+/* Hide mouse-specific hover effects in TV mode */
+.tv-mode button:hover:not(.tv-focused),
+.tv-mode .content-card:hover:not(.tv-focused) {
+    transform: none;
+}
+
+/* Show focus on focused elements instead */
+.tv-mode .content-card.tv-focused .play-overlay {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Loading and buffering indicators - more visible on TV */
+.tv-mode .loading,
+.tv-mode .buffering-indicator {
+    backdrop-filter: blur(10px);
+}
+
+/* Offline indicator - larger on TV */
+.tv-mode .offline-indicator {
+    width: 80px;
+    height: 80px;
+    font-size: 32px;
+}
+
+/* Nav bar - larger on TV */
+.tv-mode .nav-bar {
+    padding: 30px 40px;
+    gap: 40px;
+}
