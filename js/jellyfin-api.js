@@ -252,17 +252,14 @@ class JellyfinAPI {
         const limit = options.limit || 100;
         const startIndex = options.startIndex || 0;
 
-        // Fetch all three categories in parallel
-        const [homeVideos, movies, episodes] = await Promise.all([
+        // Determine which categories to fetch based on excludeMovies option
+        const includeMovies = !options.excludeMovies;
+
+        // Fetch categories in parallel
+        const requests = [
             this.request(`/Users/${this.userId}/Items?${new URLSearchParams({
                 ...baseParams,
                 IncludeItemTypes: 'Video,Photo',
-                Limit: limit,
-                StartIndex: startIndex
-            })}`),
-            this.request(`/Users/${this.userId}/Items?${new URLSearchParams({
-                ...baseParams,
-                IncludeItemTypes: 'Movie',
                 Limit: limit,
                 StartIndex: startIndex
             })}`),
@@ -272,23 +269,68 @@ class JellyfinAPI {
                 Limit: limit,
                 StartIndex: startIndex
             })}`)
-        ]);
-
-        // Combine in order: Home Videos/Photos, Movies, Episodes
-        const combinedItems = [
-            ...(homeVideos.Items || []),
-            ...(movies.Items || []),
-            ...(episodes.Items || [])
         ];
 
-        const totalCount = (homeVideos.TotalRecordCount || 0) + 
-                          (movies.TotalRecordCount || 0) + 
-                          (episodes.TotalRecordCount || 0);
+        // Only fetch movies if not excluded
+        if (includeMovies) {
+            requests.splice(1, 0, this.request(`/Users/${this.userId}/Items?${new URLSearchParams({
+                ...baseParams,
+                IncludeItemTypes: 'Movie',
+                Limit: limit,
+                StartIndex: startIndex
+            })}`));
+        }
+
+        const results = await Promise.all(requests);
+
+        // Combine items based on what was fetched
+        let combinedItems;
+        let totalCount;
+
+        if (includeMovies) {
+            const [homeVideos, movies, episodes] = results;
+            combinedItems = [
+                ...(homeVideos.Items || []),
+                ...(movies.Items || []),
+                ...(episodes.Items || [])
+            ];
+            totalCount = (homeVideos.TotalRecordCount || 0) + 
+                        (movies.TotalRecordCount || 0) + 
+                        (episodes.TotalRecordCount || 0);
+        } else {
+            const [homeVideos, episodes] = results;
+            combinedItems = [
+                ...(homeVideos.Items || []),
+                ...(episodes.Items || [])
+            ];
+            totalCount = (homeVideos.TotalRecordCount || 0) + 
+                        (episodes.TotalRecordCount || 0);
+        }
 
         return {
             Items: combinedItems,
             TotalRecordCount: totalCount
         };
+    }
+
+    /**
+     * Get movies only
+     */
+    async getMovies(limit = 100, startIndex = 0) {
+        const params = new URLSearchParams({
+            UserId: this.userId,
+            IncludeItemTypes: 'Movie',
+            Recursive: 'true',
+            SortBy: 'SortName',
+            SortOrder: 'Ascending',
+            Fields: 'PrimaryImageAspectRatio',
+            ImageTypeLimit: 1,
+            EnableImageTypes: 'Primary,Backdrop,Thumb',
+            Limit: limit,
+            StartIndex: startIndex
+        });
+
+        return this.request(`/Users/${this.userId}/Items?${params}`);
     }
 
     /**

@@ -967,6 +967,17 @@ class TinyFinApp {
             case 'recent':
                 result = await jellyfinAPI.getRecentlyPlayed(this.pageSize, startIndex);
                 break;
+            case 'movies':
+                result = await jellyfinAPI.getMovies(this.pageSize, startIndex);
+                break;
+            case 'all':
+                result = await jellyfinAPI.getAllItems({ 
+                    sortBy: 'SortName', 
+                    limit: this.pageSize,
+                    startIndex: startIndex,
+                    excludeMovies: true
+                });
+                break;
             default:
                 result = await jellyfinAPI.getAllItems({ 
                     sortBy: 'SortName', 
