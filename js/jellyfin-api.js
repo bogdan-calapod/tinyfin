@@ -334,6 +334,46 @@ class JellyfinAPI {
     }
 
     /**
+     * Get TV shows/episodes only
+     */
+    async getShows(limit = 100, startIndex = 0) {
+        const params = new URLSearchParams({
+            UserId: this.userId,
+            IncludeItemTypes: 'Episode',
+            Recursive: 'true',
+            SortBy: 'SortName',
+            SortOrder: 'Ascending',
+            Fields: 'PrimaryImageAspectRatio,SeriesInfo,ParentId',
+            ImageTypeLimit: 1,
+            EnableImageTypes: 'Primary,Backdrop,Thumb',
+            Limit: limit,
+            StartIndex: startIndex
+        });
+
+        return this.request(`/Users/${this.userId}/Items?${params}`);
+    }
+
+    /**
+     * Get videos/photos only (home videos, personal content)
+     */
+    async getVideos(limit = 100, startIndex = 0) {
+        const params = new URLSearchParams({
+            UserId: this.userId,
+            IncludeItemTypes: 'Video,Photo',
+            Recursive: 'true',
+            SortBy: 'SortName',
+            SortOrder: 'Ascending',
+            Fields: 'PrimaryImageAspectRatio',
+            ImageTypeLimit: 1,
+            EnableImageTypes: 'Primary,Backdrop,Thumb',
+            Limit: limit,
+            StartIndex: startIndex
+        });
+
+        return this.request(`/Users/${this.userId}/Items?${params}`);
+    }
+
+    /**
      * Get recently played items
      */
     async getRecentlyPlayed(limit = 50, startIndex = 0) {

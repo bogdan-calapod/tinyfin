@@ -49,7 +49,7 @@ class TinyFinApp {
         this.pendingDeleteAll = false;
         
         // State
-        this.currentFilter = 'all';
+        this.currentFilter = 'videos';
         this.currentItem = null;
         this.playbackInfo = null;
         this.allItems = [];
@@ -72,6 +72,10 @@ class TinyFinApp {
         
         // Download state - track which items are downloaded (loaded on init)
         this.downloadedItemIds = new Set();
+        
+        // Auto-hide nav bar state
+        this.lastScrollTop = 0;
+        this.navBar = document.querySelector('.nav-bar');
         
         this.init();
     }
@@ -727,12 +731,14 @@ class TinyFinApp {
     updateNavVisibility() {
         const isOnline = this.isOnline();
         
-        // Hide all tabs except downloads when offline
+        // Show/hide tabs based on online status
         this.navButtons.forEach(btn => {
             const filter = btn.dataset.filter;
             if (filter === 'downloads') {
-                btn.classList.remove('hidden');
+                // Only show downloads when offline
+                btn.classList.toggle('hidden', isOnline);
             } else {
+                // Hide other tabs when offline
                 btn.classList.toggle('hidden', !isOnline);
             }
         });
@@ -740,6 +746,11 @@ class TinyFinApp {
         // If offline and not already on downloads, switch to it
         if (!isOnline && this.currentFilter !== 'downloads') {
             this.handleNavigation('downloads');
+        }
+        
+        // If online and currently on downloads (which is now hidden), switch to videos
+        if (isOnline && this.currentFilter === 'downloads') {
+            this.handleNavigation('videos');
         }
     }
 
@@ -961,22 +972,17 @@ class TinyFinApp {
         let result;
 
         switch (this.currentFilter) {
-            case 'favorites':
-                result = await jellyfinAPI.getFavorites(this.pageSize, startIndex);
+            case 'videos':
+                result = await jellyfinAPI.getVideos(this.pageSize, startIndex);
                 break;
-            case 'recent':
-                result = await jellyfinAPI.getRecentlyPlayed(this.pageSize, startIndex);
+            case 'shows':
+                result = await jellyfinAPI.getShows(this.pageSize, startIndex);
                 break;
             case 'movies':
                 result = await jellyfinAPI.getMovies(this.pageSize, startIndex);
                 break;
-            case 'all':
-                result = await jellyfinAPI.getAllItems({ 
-                    sortBy: 'SortName', 
-                    limit: this.pageSize,
-                    startIndex: startIndex,
-                    excludeMovies: true
-                });
+            case 'recent':
+                result = await jellyfinAPI.getRecentlyPlayed(this.pageSize, startIndex);
                 break;
             default:
                 result = await jellyfinAPI.getAllItems({ 
@@ -1078,7 +1084,7 @@ class TinyFinApp {
     }
 
     /**
-     * Handle scroll for infinite loading
+     * Handle scroll for infinite loading and nav bar auto-hide
      */
     handleScroll() {
         // Only handle scroll when on home screen
@@ -1093,6 +1099,10 @@ class TinyFinApp {
         const clientHeight = container.clientHeight;
         const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
+        // Auto-hide nav bar based on scroll direction
+        this.handleNavBarAutoHide(scrollTop);
+
+        // Infinite scroll loading
         if (!this.hasMoreItems || this.isLoadingMore) {
             return;
         }
@@ -1102,6 +1112,29 @@ class TinyFinApp {
             console.log('Triggering load more', { distanceFromBottom, scrollTop, scrollHeight, clientHeight });
             this.loadMoreContent();
         }
+    }
+
+    /**
+     * Auto-hide nav bar when scrolling down, show when scrolling up
+     */
+    handleNavBarAutoHide(scrollTop) {
+        // Don't hide if at the very top
+        if (scrollTop <= 0) {
+            this.navBar.classList.remove('nav-hidden');
+            this.lastScrollTop = scrollTop;
+            return;
+        }
+
+        // Determine scroll direction
+        if (scrollTop > this.lastScrollTop && scrollTop > 100) {
+            // Scrolling down & past threshold - hide nav
+            this.navBar.classList.add('nav-hidden');
+        } else if (scrollTop < this.lastScrollTop) {
+            // Scrolling up - show nav
+            this.navBar.classList.remove('nav-hidden');
+        }
+
+        this.lastScrollTop = scrollTop;
     }
 
     renderContent(items) {
