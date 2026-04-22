@@ -77,6 +77,10 @@ class TinyFinApp {
         this.lastScrollTop = 0;
         this.navBar = document.querySelector('.nav-bar');
         
+        // TV shows grouping state
+        this.seriesExpandedCount = new Map(); // Track how many episodes shown per series
+        this.seriesDefaultCount = 10; // Show 10 episodes initially
+        
         this.init();
     }
 
@@ -976,7 +980,8 @@ class TinyFinApp {
                 result = await jellyfinAPI.getVideos(this.pageSize, startIndex);
                 break;
             case 'shows':
-                result = await jellyfinAPI.getShows(this.pageSize, startIndex);
+                // Load all episodes at once for proper grouping (no pagination)
+                result = await jellyfinAPI.getShows(1000, 0);
                 break;
             case 'movies':
                 result = await jellyfinAPI.getMovies(this.pageSize, startIndex);
@@ -1071,15 +1076,20 @@ class TinyFinApp {
     appendContent(items) {
         if (!items.length) return;
 
-        const temp = document.createElement('div');
-        temp.innerHTML = items.map(item => this.createContentCard(item)).join('');
-        
-        // Attach event handlers
-        this.attachCardEventHandlers(temp);
-        
-        // Move cards to grid
-        while (temp.firstChild) {
-            this.contentGrid.appendChild(temp.firstChild);
+        // For shows, just re-render (we load all episodes at once)
+        if (this.currentFilter === 'shows') {
+            this.renderGroupedShows(this.allItems);
+        } else {
+            const temp = document.createElement('div');
+            temp.innerHTML = items.map(item => this.createContentCard(item)).join('');
+            
+            // Attach event handlers
+            this.attachCardEventHandlers(temp);
+            
+            // Move cards to grid
+            while (temp.firstChild) {
+                this.contentGrid.appendChild(temp.firstChild);
+            }
         }
     }
 
@@ -1102,7 +1112,12 @@ class TinyFinApp {
         // Auto-hide nav bar based on scroll direction
         this.handleNavBarAutoHide(scrollTop);
 
-        // Infinite scroll loading
+        // Skip infinite scroll for shows tab (uses Load More buttons instead)
+        if (this.currentFilter === 'shows') {
+            return;
+        }
+
+        // Infinite scroll loading for other tabs
         if (!this.hasMoreItems || this.isLoadingMore) {
             return;
         }
@@ -1143,10 +1158,110 @@ class TinyFinApp {
             return;
         }
 
-        this.contentGrid.innerHTML = items.map(item => this.createContentCard(item)).join('');
+        // Special rendering for TV shows - group by series
+        if (this.currentFilter === 'shows') {
+            this.renderGroupedShows(items);
+        } else {
+            this.contentGrid.innerHTML = items.map(item => this.createContentCard(item)).join('');
+            this.attachCardEventHandlers(this.contentGrid);
+        }
+    }
 
-        // Add click handlers
+    /**
+     * Render TV shows grouped by series with episodes in order
+     * Shows first 10 episodes per series with "Load More" button
+     */
+    renderGroupedShows(episodes) {
+        // Group episodes by series
+        const seriesMap = new Map();
+        
+        episodes.forEach(episode => {
+            const seriesId = episode.SeriesId;
+            const seriesName = episode.SeriesName || 'Unknown Series';
+            
+            if (!seriesMap.has(seriesId)) {
+                seriesMap.set(seriesId, {
+                    name: seriesName,
+                    id: seriesId,
+                    episodes: []
+                });
+            }
+            
+            seriesMap.get(seriesId).episodes.push(episode);
+        });
+
+        // Sort episodes within each series
+        seriesMap.forEach(series => {
+            series.episodes.sort((a, b) => {
+                const seasonDiff = (a.ParentIndexNumber || 0) - (b.ParentIndexNumber || 0);
+                if (seasonDiff !== 0) return seasonDiff;
+                return (a.IndexNumber || 0) - (b.IndexNumber || 0);
+            });
+        });
+
+        // Convert to array and sort by series name
+        const seriesArray = Array.from(seriesMap.values()).sort((a, b) => 
+            a.name.localeCompare(b.name)
+        );
+
+        // Render grouped content
+        let html = '';
+        seriesArray.forEach(series => {
+            // Initialize expanded count if not set
+            if (!this.seriesExpandedCount.has(series.id)) {
+                this.seriesExpandedCount.set(series.id, this.seriesDefaultCount);
+            }
+            
+            const showCount = this.seriesExpandedCount.get(series.id);
+            const visibleEpisodes = series.episodes.slice(0, showCount);
+            const hasMore = series.episodes.length > showCount;
+            
+            html += `
+                <div class="series-group" data-series-id="${series.id}">
+                    <h2 class="series-header">${series.name}</h2>
+                    <div class="series-episodes">
+                        ${visibleEpisodes.map(episode => this.createContentCard(episode, true)).join('')}
+                    </div>
+                    ${hasMore ? `
+                        <button class="load-more-btn" data-series-id="${series.id}" aria-label="Load more episodes">
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <circle cx="12" cy="12" r="10" stroke="#9C27B0" stroke-width="2" fill="none"/>
+                                <path d="M12 6v6l4 2" stroke="#9C27B0" stroke-width="2" fill="none" stroke-linecap="round"/>
+                            </svg>
+                            <span>Load More (${series.episodes.length - showCount} more episodes)</span>
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        });
+
+        this.contentGrid.innerHTML = html;
         this.attachCardEventHandlers(this.contentGrid);
+        this.attachLoadMoreHandlers();
+    }
+    
+    /**
+     * Attach event handlers to "Load More" buttons
+     */
+    attachLoadMoreHandlers() {
+        this.contentGrid.querySelectorAll('.load-more-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const seriesId = btn.dataset.seriesId;
+                this.loadMoreEpisodes(seriesId);
+            });
+        });
+    }
+    
+    /**
+     * Load more episodes for a specific series
+     */
+    loadMoreEpisodes(seriesId) {
+        const currentCount = this.seriesExpandedCount.get(seriesId) || this.seriesDefaultCount;
+        this.seriesExpandedCount.set(seriesId, currentCount + 10);
+        
+        // Re-render shows (but this is now instant since we're not fetching)
+        this.renderGroupedShows(this.allItems);
     }
     
     /**

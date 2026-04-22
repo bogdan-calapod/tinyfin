@@ -335,13 +335,15 @@ class JellyfinAPI {
 
     /**
      * Get TV shows/episodes only
+     * Sorted by Series Name, then Season, then Episode Number
+     * This ensures pagination loads all episodes of one show before moving to the next
      */
     async getShows(limit = 100, startIndex = 0) {
         const params = new URLSearchParams({
             UserId: this.userId,
             IncludeItemTypes: 'Episode',
             Recursive: 'true',
-            SortBy: 'SortName',
+            SortBy: 'SeriesSortName,ParentIndexNumber,IndexNumber',
             SortOrder: 'Ascending',
             Fields: 'PrimaryImageAspectRatio,SeriesInfo,ParentId',
             ImageTypeLimit: 1,
