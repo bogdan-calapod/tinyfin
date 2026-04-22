@@ -3,7 +3,7 @@
  * Handles offline caching for Android PWA
  */
 
-const CACHE_VERSION = 'tinyfin-v12';
+const CACHE_VERSION = 'tinyfin-v13';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;
 const API_CACHE = `${CACHE_VERSION}-api`;
@@ -16,6 +16,8 @@ const APP_SHELL = [
     './css/styles.css',
     './js/jellyfin-api.js',
     './js/download-manager.js',
+    './js/fullscreen.js',
+    './js/tv-navigation.js',
     './js/app.js',
     './manifest.json',
     './assets/icon.svg',
