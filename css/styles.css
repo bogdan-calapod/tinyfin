@@ -11,7 +11,8 @@
     user-select: none;
 }
 
-html, body {
+html,
+body {
     width: 100%;
     height: 100%;
     overflow: hidden;
@@ -28,7 +29,9 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
 }
 
 .screen.hidden,
@@ -42,7 +45,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #FF6B9D 0%, #FF8E53 50%, #FFD93D 100%);
+    background: linear-gradient(135deg, #ff6b9d 0%, #ff8e53 50%, #ffd93d 100%);
 }
 
 .setup-container {
@@ -64,12 +67,17 @@ body {
 .logo-icon {
     width: 100%;
     height: 100%;
-    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
 }
 
 @keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
 }
 
 .setup-form {
@@ -85,13 +93,13 @@ body {
     border: none;
     border-radius: 50px;
     background: white;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     outline: none;
     text-align: center;
 }
 
 .setup-form input:focus {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .connect-button {
@@ -102,8 +110,10 @@ body {
     border-radius: 50%;
     background: white;
     cursor: pointer;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -111,7 +121,7 @@ body {
 
 .connect-button:active {
     transform: scale(0.95);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
 }
 
 .error-message {
@@ -130,14 +140,21 @@ body {
 }
 
 @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-10px); }
-    75% { transform: translateX(10px); }
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-10px);
+    }
+    75% {
+        transform: translateX(10px);
+    }
 }
 
 /* ==================== HOME SCREEN ==================== */
 #home-screen {
-    background: linear-gradient(180deg, #E8F5E9 0%, #C8E6C9 100%);
+    background: linear-gradient(180deg, #e8f5e9 0%, #c8e6c9 100%);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -156,13 +173,18 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
 }
 
 /* Navigation Bar */
@@ -174,7 +196,7 @@ body {
     align-items: center;
     padding: 15px 20px;
     background: white;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     z-index: 100;
     flex-shrink: 0;
     transition: transform 0.3s ease;
@@ -192,7 +214,9 @@ body {
     border-radius: 50%;
     background: #f5f5f5;
     cursor: pointer;
-    transition: transform 0.2s ease, background 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -209,8 +233,8 @@ body {
 }
 
 .nav-btn.active {
-    background: #E3F2FD;
-    box-shadow: 0 0 0 4px #2196F3;
+    background: #e3f2fd;
+    box-shadow: 0 0 0 4px #2196f3;
 }
 
 /* Content Grid - YouTube Kids style */
@@ -255,7 +279,7 @@ body {
     color: white;
     margin: 0 0 15px 0;
     padding: 0 5px;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .series-episodes {
@@ -277,9 +301,9 @@ body {
     padding: 15px 30px;
     font-size: 16px;
     font-weight: bold;
-    color: #9C27B0;
+    color: #9c27b0;
     background: white;
-    border: 2px solid #9C27B0;
+    border: 2px solid #9c27b0;
     border-radius: 50px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -287,7 +311,7 @@ body {
 }
 
 .load-more-btn:hover {
-    background: #9C27B0;
+    background: #9c27b0;
     color: white;
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(156, 39, 176, 0.3);
@@ -303,8 +327,12 @@ body {
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @media (min-width: 600px) {
@@ -312,7 +340,7 @@ body {
         font-size: 32px;
         margin-bottom: 20px;
     }
-    
+
     .series-episodes {
         grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
         grid-auto-rows: minmax(150px, auto);
@@ -325,7 +353,7 @@ body {
         font-size: 36px;
         margin-bottom: 25px;
     }
-    
+
     .series-episodes {
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         grid-auto-rows: minmax(170px, auto);
@@ -342,8 +370,10 @@ body {
     border-radius: 20px;
     overflow: hidden;
     cursor: pointer;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transition:
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
     background: #ddd;
 }
 
@@ -362,7 +392,7 @@ body {
 
 .content-card:hover {
     transform: scale(1.02);
-    box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
 }
 
 .content-card img {
@@ -380,7 +410,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -396,7 +426,7 @@ body {
 .content-card .play-overlay svg {
     width: 80px;
     height: 80px;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
 /* Favorite indicator */
@@ -411,7 +441,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .content-card .favorite-badge svg {
@@ -426,12 +456,12 @@ body {
     left: 10px;
     width: 40px;
     height: 40px;
-    background: #2196F3;
+    background: #2196f3;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .content-card .series-badge svg {
@@ -454,7 +484,9 @@ body {
     justify-content: center;
     cursor: pointer;
     z-index: 10;
-    transition: transform 0.2s ease, background 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease;
 }
 
 .content-card .download-btn:active {
@@ -496,7 +528,7 @@ body {
 
 .content-card .download-progress .progress-ring {
     fill: none;
-    stroke: #4CAF50;
+    stroke: #4caf50;
     stroke-width: 3;
     stroke-linecap: round;
     transition: stroke-dashoffset 0.3s ease;
@@ -514,12 +546,12 @@ body {
     left: 10px;
     width: 40px;
     height: 40px;
-    background: #4CAF50;
+    background: #4caf50;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .content-card .downloaded-badge svg {
@@ -540,7 +572,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     cursor: pointer;
     z-index: 10;
     transition: transform 0.2s ease;
@@ -562,7 +594,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(255,255,255,0.9);
+    background: rgba(255, 255, 255, 0.9);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -572,14 +604,16 @@ body {
 .spinner {
     width: 80px;
     height: 80px;
-    border: 8px solid #E0E0E0;
-    border-top-color: #FF6B9D;
+    border: 8px solid #e0e0e0;
+    border-top-color: #ff6b9d;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Loading More Indicator (infinite scroll) */
@@ -594,8 +628,8 @@ body {
 .spinner-small {
     width: 40px;
     height: 40px;
-    border: 4px solid #E0E0E0;
-    border-top-color: #FF6B9D;
+    border: 4px solid #e0e0e0;
+    border-top-color: #ff6b9d;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -629,7 +663,7 @@ body {
     width: 80px;
     height: 80px;
     border: 6px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #FF6B9D;
+    border-top-color: #ff6b9d;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -644,7 +678,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     opacity: 0;
     transition: opacity 0.3s ease;
     pointer-events: none;
@@ -660,18 +694,20 @@ body {
     height: 120px;
     border: none;
     border-radius: 50%;
-    background: rgba(255,255,255,0.2);
+    background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(10px);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s ease, background 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease;
 }
 
 .play-pause-btn:active {
     transform: scale(0.9);
-    background: rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .play-pause-btn svg {
@@ -736,12 +772,12 @@ body {
     left: 0;
     width: 100%;
     height: 280px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, white 100%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, white 100%);
     border-radius: 30px 30px 0 0;
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 200;
-    box-shadow: 0 -8px 30px rgba(0,0,0,0.2);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
 }
 
 .related-drawer.open {
@@ -794,12 +830,17 @@ body {
     border-left: 4px solid white;
     border-top: 4px solid white;
     transform: rotate(45deg);
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 @keyframes swipeUp {
-    0%, 100% { transform: translateX(-50%) translateY(0); }
-    50% { transform: translateX(-50%) translateY(-20px); }
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-20px);
+    }
 }
 
 /* ==================== SETTINGS MODAL ==================== */
@@ -809,7 +850,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -825,10 +866,12 @@ body {
     padding: 40px;
     background: white;
     border-radius: 30px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
-.settings-action-btn, .logout-btn, .close-modal-btn {
+.settings-action-btn,
+.logout-btn,
+.close-modal-btn {
     width: 100px;
     height: 100px;
     border: none;
@@ -838,7 +881,9 @@ body {
     transition: transform 0.2s ease;
 }
 
-.settings-action-btn:active, .logout-btn:active, .close-modal-btn:active {
+.settings-action-btn:active,
+.logout-btn:active,
+.close-modal-btn:active {
     transform: scale(0.9);
 }
 
@@ -879,7 +924,7 @@ body {
 
 .content-grid::-webkit-scrollbar-thumb,
 .drawer-content::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.2);
+    background: rgba(0, 0, 0, 0.2);
     border-radius: 4px;
 }
 
@@ -888,7 +933,7 @@ body {
     .nav-bar {
         padding-top: calc(15px + env(safe-area-inset-top));
     }
-    
+
     .back-btn {
         top: calc(20px + env(safe-area-inset-top));
     }
@@ -896,7 +941,9 @@ body {
 
 /* Progress indicator for currently playing in drawer */
 .content-card.now-playing {
-    box-shadow: 0 0 0 4px #4CAF50, 0 8px 25px rgba(0,0,0,0.15);
+    box-shadow:
+        0 0 0 4px #4caf50,
+        0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 /* Episode number badge */
@@ -906,12 +953,12 @@ body {
     right: 10px;
     min-width: 40px;
     height: 40px;
-    background: #FF5722;
+    background: #ff5722;
     border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     color: white;
     font-weight: bold;
     font-size: 18px;
@@ -938,15 +985,16 @@ body {
 .math-num {
     width: 70px;
     height: 70px;
-    background: #E3F2FD;
+    background: #e3f2fd;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #1976D2;
+    color: #1976d2;
 }
 
-.math-op, .math-eq {
+.math-op,
+.math-eq {
     color: #666;
 }
 
@@ -962,13 +1010,15 @@ body {
     height: 80px;
     border: none;
     border-radius: 50%;
-    background: #4CAF50;
+    background: #4caf50;
     color: white;
     font-size: 32px;
     font-weight: bold;
     cursor: pointer;
-    transition: transform 0.2s ease, background 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .math-answer-btn:active {
@@ -981,9 +1031,18 @@ body {
 }
 
 @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    20%, 60% { transform: translateX(-10px); }
-    40%, 80% { transform: translateX(10px); }
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    20%,
+    60% {
+        transform: translateX(-10px);
+    }
+    40%,
+    80% {
+        transform: translateX(10px);
+    }
 }
 
 .cancel-delete-btn {
@@ -1009,7 +1068,7 @@ body {
 
 /* Focus indicator for TV navigation */
 .tv-focused {
-    outline: 4px solid #FFD700 !important;
+    outline: 4px solid #ffd700 !important;
     outline-offset: 4px;
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.6) !important;
     transform: scale(1.05) !important;
@@ -1022,7 +1081,10 @@ body {
 .tv-mode input,
 .tv-mode .content-card,
 .tv-mode .nav-btn {
-    transition: transform 0.2s ease, box-shadow 0.2s ease, outline 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        outline 0.2s ease;
 }
 
 /* Content cards - larger hit area for TV */

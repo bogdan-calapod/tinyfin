@@ -12,7 +12,7 @@ class FullscreenManager {
     init() {
         // Try to enter fullscreen on first user interaction
         this.enableOnInteraction();
-        
+
         // Re-enable fullscreen when visibility changes
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
@@ -30,16 +30,16 @@ class FullscreenManager {
      */
     enableOnInteraction() {
         const events = ['touchstart', 'click', 'keydown'];
-        
+
         const handler = () => {
             this.requestFullscreen();
             // Remove listeners after first interaction
-            events.forEach(event => {
+            events.forEach((event) => {
                 document.removeEventListener(event, handler);
             });
         };
 
-        events.forEach(event => {
+        events.forEach((event) => {
             document.addEventListener(event, handler, { once: true });
         });
     }
@@ -52,7 +52,7 @@ class FullscreenManager {
 
         // Try different fullscreen APIs
         if (elem.requestFullscreen) {
-            elem.requestFullscreen({ navigationUI: 'hide' }).catch(err => {
+            elem.requestFullscreen({ navigationUI: 'hide' }).catch((err) => {
                 console.log('Fullscreen request failed:', err);
             });
         } else if (elem.webkitRequestFullscreen) {
@@ -73,7 +73,7 @@ class FullscreenManager {
     tryLockOrientation() {
         try {
             if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(err => {
+                screen.orientation.lock('landscape').catch((err) => {
                     console.log('Orientation lock failed:', err);
                 });
             }

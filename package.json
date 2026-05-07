@@ -1,0 +1,43 @@
+{
+    "name": "tinyfin",
+    "version": "1.0.0",
+    "description": "A kid-friendly Jellyfin web client designed for young children who cannot read. Inspired by YouTube Kids.",
+    "main": "sw.js",
+    "scripts": {
+        "lint": "eslint 'js/**/*.js' sw.js",
+        "lint:fix": "eslint 'js/**/*.js' sw.js --fix",
+        "format": "prettier --write '**/*.{js,html,css,json}'",
+        "format:check": "prettier --check '**/*.{js,html,css,json}'",
+        "prepare": "husky"
+    },
+    "lint-staged": {
+        "*.js": [
+            "prettier --write",
+            "eslint --fix"
+        ],
+        "*.{html,css,json}": [
+            "prettier --write"
+        ]
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/bogdan-calapod/tinyfin.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "bugs": {
+        "url": "https://github.com/bogdan-calapod/tinyfin/issues"
+    },
+    "homepage": "https://github.com/bogdan-calapod/tinyfin#readme",
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.3.0",
+        "eslint-config-prettier": "^10.1.8",
+        "globals": "^17.6.0",
+        "husky": "^9.1.7",
+        "lint-staged": "^17.0.2",
+        "prettier": "^3.8.3"
+    }
+}

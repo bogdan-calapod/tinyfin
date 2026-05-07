@@ -17,7 +17,7 @@ class JellyfinAPI {
     getDeviceId() {
         let deviceId = localStorage.getItem('tinyfin_deviceId');
         if (!deviceId) {
-            deviceId = 'tinyfin_' + Math.random().toString(36).substring(2, 15);
+            deviceId = `tinyfin_${  Math.random().toString(36).substring(2, 15)}`;
             localStorage.setItem('tinyfin_deviceId', deviceId);
         }
         return deviceId;
@@ -70,42 +70,48 @@ class JellyfinAPI {
     async connect(serverUrl, username, password) {
         // Normalize server URL - handle common mistakes
         let normalizedUrl = serverUrl.trim().replace(/\/+$/, '');
-        
+
         // Add https:// if no protocol specified
         if (!normalizedUrl.match(/^https?:\/\//i)) {
-            normalizedUrl = 'https://' + normalizedUrl;
+            normalizedUrl = `https://${  normalizedUrl}`;
         }
-        
+
         this.serverUrl = normalizedUrl;
-        
+
         // Test server connection first
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
-            
+
             const response = await fetch(`${this.serverUrl}/System/Info/Public`, {
                 method: 'GET',
                 signal: controller.signal
             });
-            
+
             clearTimeout(timeoutId);
-            
+
             if (!response.ok) {
                 throw new Error(`Server returned ${response.status}`);
             }
-            
+
             const serverInfo = await response.json();
-            console.log('Connected to Jellyfin server:', serverInfo.ServerName, 'v' + serverInfo.Version);
-            
+            console.log(
+                'Connected to Jellyfin server:',
+                serverInfo.ServerName,
+                `v${  serverInfo.Version}`
+            );
         } catch (error) {
             console.error('Server connection test failed:', error);
             if (error.name === 'AbortError') {
                 throw new Error('Connection timed out. Check the server URL.');
             }
-            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            if (
+                error.message.includes('Failed to fetch') ||
+                error.message.includes('NetworkError')
+            ) {
                 throw new Error('Cannot reach server. Check URL and CORS settings.');
             }
-            throw new Error('Cannot connect to server: ' + error.message);
+            throw new Error(`Cannot connect to server: ${  error.message}`);
         }
 
         // Authenticate
@@ -134,7 +140,7 @@ class JellyfinAPI {
             if (error.message.includes('401')) {
                 throw new Error('Invalid username or password');
             }
-            throw new Error('Login failed: ' + error.message);
+            throw new Error(`Login failed: ${  error.message}`);
         }
     }
 
@@ -180,7 +186,7 @@ class JellyfinAPI {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000);
-            
+
             const url = `${this.serverUrl}/Users/${this.userId}`;
             const response = await fetch(url, {
                 headers: {
@@ -188,9 +194,9 @@ class JellyfinAPI {
                 },
                 signal: controller.signal
             });
-            
+
             clearTimeout(timeoutId);
-            
+
             if (!response.ok) {
                 // Only clear credentials on auth errors (401/403)
                 // Other errors (500, etc.) might be temporary server issues
@@ -204,7 +210,7 @@ class JellyfinAPI {
                 console.log('Server error during validation:', response.status);
                 return true; // Optimistically assume valid, let app try to work
             }
-            
+
             return true;
         } catch (error) {
             // Network errors (offline, timeout, etc.) - don't clear credentials
@@ -257,28 +263,38 @@ class JellyfinAPI {
 
         // Fetch categories in parallel
         const requests = [
-            this.request(`/Users/${this.userId}/Items?${new URLSearchParams({
-                ...baseParams,
-                IncludeItemTypes: 'Video,Photo',
-                Limit: limit,
-                StartIndex: startIndex
-            })}`),
-            this.request(`/Users/${this.userId}/Items?${new URLSearchParams({
-                ...baseParams,
-                IncludeItemTypes: 'Episode',
-                Limit: limit,
-                StartIndex: startIndex
-            })}`)
+            this.request(
+                `/Users/${this.userId}/Items?${new URLSearchParams({
+                    ...baseParams,
+                    IncludeItemTypes: 'Video,Photo',
+                    Limit: limit,
+                    StartIndex: startIndex
+                })}`
+            ),
+            this.request(
+                `/Users/${this.userId}/Items?${new URLSearchParams({
+                    ...baseParams,
+                    IncludeItemTypes: 'Episode',
+                    Limit: limit,
+                    StartIndex: startIndex
+                })}`
+            )
         ];
 
         // Only fetch movies if not excluded
         if (includeMovies) {
-            requests.splice(1, 0, this.request(`/Users/${this.userId}/Items?${new URLSearchParams({
-                ...baseParams,
-                IncludeItemTypes: 'Movie',
-                Limit: limit,
-                StartIndex: startIndex
-            })}`));
+            requests.splice(
+                1,
+                0,
+                this.request(
+                    `/Users/${this.userId}/Items?${new URLSearchParams({
+                        ...baseParams,
+                        IncludeItemTypes: 'Movie',
+                        Limit: limit,
+                        StartIndex: startIndex
+                    })}`
+                )
+            );
         }
 
         const results = await Promise.all(requests);
@@ -294,17 +310,14 @@ class JellyfinAPI {
                 ...(movies.Items || []),
                 ...(episodes.Items || [])
             ];
-            totalCount = (homeVideos.TotalRecordCount || 0) + 
-                        (movies.TotalRecordCount || 0) + 
-                        (episodes.TotalRecordCount || 0);
+            totalCount =
+                (homeVideos.TotalRecordCount || 0) +
+                (movies.TotalRecordCount || 0) +
+                (episodes.TotalRecordCount || 0);
         } else {
             const [homeVideos, episodes] = results;
-            combinedItems = [
-                ...(homeVideos.Items || []),
-                ...(episodes.Items || [])
-            ];
-            totalCount = (homeVideos.TotalRecordCount || 0) + 
-                        (episodes.TotalRecordCount || 0);
+            combinedItems = [...(homeVideos.Items || []), ...(episodes.Items || [])];
+            totalCount = (homeVideos.TotalRecordCount || 0) + (episodes.TotalRecordCount || 0);
         }
 
         return {
@@ -409,7 +422,7 @@ class JellyfinAPI {
 
         const folders = await this.request('/Library/VirtualFolders');
         const library = (folders || []).find(
-            item => item.Name.toLowerCase() === name.toLowerCase()
+            (item) => item.Name.toLowerCase() === name.toLowerCase()
         );
 
         if (library && library.ItemId) {
@@ -512,11 +525,11 @@ class JellyfinAPI {
         });
 
         const result = await this.request(`/Users/${this.userId}/Items?${params}`);
-        
+
         // Find current episode index and return episodes after it
         const items = result.Items || [];
-        const currentIndex = items.findIndex(item => item.Id === currentEpisodeId);
-        
+        const currentIndex = items.findIndex((item) => item.Id === currentEpisodeId);
+
         if (currentIndex >= 0 && currentIndex < items.length - 1) {
             return {
                 ...result,
@@ -545,7 +558,7 @@ class JellyfinAPI {
             AutoOpenLiveStream: true,
             MaxStreamingBitrate: 20000000
         });
-        
+
         const result = await this.request(`/Items/${itemId}/PlaybackInfo?${params}`, {
             method: 'POST',
             body: JSON.stringify({
@@ -566,15 +579,20 @@ class JellyfinAPI {
             MaxStreamingBitrate: 2000000,
             MaxStaticBitrate: 5000000,
             MusicStreamingTranscodingBitrate: 128000,
-            
+
             // Direct play profiles - what the browser can play natively
             DirectPlayProfiles: [
                 // MP4 with H.264 - most compatible
                 { Container: 'mp4,m4v', Type: 'Video', VideoCodec: 'h264', AudioCodec: 'aac,mp3' },
-                // WebM 
-                { Container: 'webm', Type: 'Video', VideoCodec: 'vp8,vp9', AudioCodec: 'vorbis,opus' },
+                // WebM
+                {
+                    Container: 'webm',
+                    Type: 'Video',
+                    VideoCodec: 'vp8,vp9',
+                    AudioCodec: 'vorbis,opus'
+                }
             ],
-            
+
             // Transcoding profiles - what to transcode TO
             TranscodingProfiles: [
                 {
@@ -593,10 +611,10 @@ class JellyfinAPI {
                     CopyTimestamps: false
                 }
             ],
-            
+
             // Container profiles
             ContainerProfiles: [],
-            
+
             // Codec profiles - constraints for video/audio
             CodecProfiles: [
                 {
@@ -632,13 +650,13 @@ class JellyfinAPI {
                     ]
                 }
             ],
-            
+
             // Subtitle profiles
             SubtitleProfiles: [
                 { Format: 'vtt', Method: 'External' },
                 { Format: 'srt', Method: 'External' }
             ],
-            
+
             // Response profiles - prefer certain formats
             ResponseProfiles: [
                 {
@@ -657,16 +675,20 @@ class JellyfinAPI {
     findPreferredAudioStream(mediaSource) {
         console.log('MediaSource:', mediaSource);
         console.log('MediaStreams:', mediaSource.MediaStreams);
-        
-        const audioStreams = (mediaSource.MediaStreams || []).filter(s => s.Type === 'Audio');
-        
-        console.log('Audio streams found:', audioStreams.length, audioStreams.map(s => ({
-            index: s.Index,
-            lang: s.Language,
-            title: s.DisplayTitle || s.Title,
-            isDefault: s.IsDefault
-        })));
-        
+
+        const audioStreams = (mediaSource.MediaStreams || []).filter((s) => s.Type === 'Audio');
+
+        console.log(
+            'Audio streams found:',
+            audioStreams.length,
+            audioStreams.map((s) => ({
+                index: s.Index,
+                lang: s.Language,
+                title: s.DisplayTitle || s.Title,
+                isDefault: s.IsDefault
+            }))
+        );
+
         if (audioStreams.length === 0) {
             console.log('No audio streams found');
             return null;
@@ -674,16 +696,21 @@ class JellyfinAPI {
 
         // Preferred languages in order: Romanian first
         const romanianLanguages = ['rum', 'ron', 'ro', 'romanian'];
-        
+
         // Look for Romanian audio
         for (const lang of romanianLanguages) {
-            const stream = audioStreams.find(s => 
-                s.Language?.toLowerCase() === lang ||
-                s.DisplayTitle?.toLowerCase().includes('romanian') ||
-                s.Title?.toLowerCase().includes('romanian')
+            const stream = audioStreams.find(
+                (s) =>
+                    s.Language?.toLowerCase() === lang ||
+                    s.DisplayTitle?.toLowerCase().includes('romanian') ||
+                    s.Title?.toLowerCase().includes('romanian')
             );
             if (stream) {
-                console.log('Found Romanian audio track:', stream.Index, stream.DisplayTitle || stream.Language);
+                console.log(
+                    'Found Romanian audio track:',
+                    stream.Index,
+                    stream.DisplayTitle || stream.Language
+                );
                 return stream.Index;
             }
         }
@@ -691,20 +718,29 @@ class JellyfinAPI {
         // If no Romanian, look for English
         const englishLanguages = ['eng', 'en', 'english'];
         for (const lang of englishLanguages) {
-            const stream = audioStreams.find(s => 
-                s.Language?.toLowerCase() === lang ||
-                s.DisplayTitle?.toLowerCase().includes('english') ||
-                s.Title?.toLowerCase().includes('english')
+            const stream = audioStreams.find(
+                (s) =>
+                    s.Language?.toLowerCase() === lang ||
+                    s.DisplayTitle?.toLowerCase().includes('english') ||
+                    s.Title?.toLowerCase().includes('english')
             );
             if (stream) {
-                console.log('Found English audio track:', stream.Index, stream.DisplayTitle || stream.Language);
+                console.log(
+                    'Found English audio track:',
+                    stream.Index,
+                    stream.DisplayTitle || stream.Language
+                );
                 return stream.Index;
             }
         }
 
         // Fall back to default audio stream
-        const defaultStream = audioStreams.find(s => s.IsDefault) || audioStreams[0];
-        console.log('Using default audio track:', defaultStream.Index, defaultStream.DisplayTitle || defaultStream.Language);
+        const defaultStream = audioStreams.find((s) => s.IsDefault) || audioStreams[0];
+        console.log(
+            'Using default audio track:',
+            defaultStream.Index,
+            defaultStream.DisplayTitle || defaultStream.Language
+        );
         return defaultStream.Index;
     }
 
@@ -738,27 +774,27 @@ class JellyfinAPI {
             PlaySessionId: playSessionId,
             api_key: this.accessToken,
             DeviceId: this.deviceId,
-            
+
             // Video settings - 480p
             VideoCodec: 'h264',
             MaxWidth: 854,
             MaxHeight: 480,
             VideoBitRate: 1500000,
-            
-            // Audio settings  
+
+            // Audio settings
             AudioCodec: 'aac',
             AudioBitRate: 128000,
             MaxAudioChannels: 2,
-            
+
             // Required params
             TranscodingMaxAudioChannels: 2,
             SegmentContainer: 'ts',
             MinSegments: 1,
-            
+
             // Let Jellyfin handle stream copy decisions
             RequireAvc: false,
             RequireNonAnamorphic: false,
-            
+
             // Context
             Context: 'Streaming',
             StartTimeTicks: 0
@@ -831,7 +867,13 @@ class JellyfinAPI {
     /**
      * Report playback progress
      */
-    async reportPlaybackProgress(itemId, mediaSourceId, playSessionId, positionTicks, isPaused = false) {
+    async reportPlaybackProgress(
+        itemId,
+        mediaSourceId,
+        playSessionId,
+        positionTicks,
+        isPaused = false
+    ) {
         await this.request('/Sessions/Playing/Progress', {
             method: 'POST',
             body: JSON.stringify({

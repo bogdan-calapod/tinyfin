@@ -6,13 +6,13 @@
 class DownloadManager {
     constructor() {
         this.dbName = 'TinyFinDownloads';
-        this.dbVersion = 2;  // Bump version to add segments store
+        this.dbVersion = 2; // Bump version to add segments store
         this.db = null;
         this.activeDownloads = new Set(); // itemId set for tracking
         this.downloadProgress = new Map(); // itemId -> progress (0-100)
         this.listeners = new Set();
         this.pendingDownloads = new Map(); // itemId -> {item, resolve, reject}
-        
+
         // Listen for service worker messages
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('message', (event) => {
@@ -20,13 +20,13 @@ class DownloadManager {
             });
         }
     }
-    
+
     /**
      * Handle messages from service worker
      */
     handleServiceWorkerMessage(data) {
         const { type, itemId } = data;
-        
+
         switch (type) {
             case 'DOWNLOAD_PROGRESS':
                 this.downloadProgress.set(itemId, data.progress);
@@ -37,50 +37,54 @@ class DownloadManager {
                     totalSize: data.totalSize
                 });
                 break;
-                
+
             case 'DOWNLOAD_COMPLETE':
                 this.handleBackgroundDownloadComplete(itemId, data);
                 break;
-                
+
             case 'DOWNLOAD_ERROR':
                 this.handleBackgroundDownloadError(itemId, data.error);
                 break;
         }
     }
-    
+
     /**
      * Handle successful background download
      * Note: Service worker already saved to IndexedDB, we just update local state
      */
     async handleBackgroundDownloadComplete(itemId, data) {
         const pending = this.pendingDownloads.get(itemId);
-        
+
         // Service worker already saved everything to IndexedDB
         // We just need to update our local state and notify listeners
-        
+
         this.downloadProgress.set(itemId, 100);
-        this.notify('downloadComplete', { 
-            itemId, 
-            item: pending?.item, 
-            size: data.size 
+        this.notify('downloadComplete', {
+            itemId,
+            item: pending?.item,
+            size: data.size
         });
-        
-        console.log('Download complete:', pending?.item?.Name || itemId, `(${Math.round(data.size / 1024 / 1024)}MB)`);
-        
+
+        console.log(
+            'Download complete:',
+            pending?.item?.Name || itemId,
+            `(${Math.round(data.size / 1024 / 1024)}MB)`
+        );
+
         this.activeDownloads.delete(itemId);
         this.downloadProgress.delete(itemId);
         this.pendingDownloads.delete(itemId);
     }
-    
+
     /**
      * Handle background download error
      */
     async handleBackgroundDownloadError(itemId, errorMessage) {
         console.error('Background download failed:', errorMessage);
-        
+
         this.notify('downloadError', { itemId, error: errorMessage });
         await this.deleteDownload(itemId);
-        
+
         this.activeDownloads.delete(itemId);
         this.downloadProgress.delete(itemId);
         this.pendingDownloads.delete(itemId);
@@ -122,11 +126,13 @@ class DownloadManager {
                 if (!db.objectStoreNames.contains('thumbnails')) {
                     db.createObjectStore('thumbnails', { keyPath: 'itemId' });
                 }
-                
+
                 // Store for HLS segments (new in v2)
                 // Key: itemId + segmentIndex, Value: segment blob
                 if (!db.objectStoreNames.contains('segments')) {
-                    const segmentsStore = db.createObjectStore('segments', { keyPath: ['itemId', 'index'] });
+                    const segmentsStore = db.createObjectStore('segments', {
+                        keyPath: ['itemId', 'index']
+                    });
                     segmentsStore.createIndex('itemId', 'itemId', { unique: false });
                 }
             };
@@ -151,7 +157,7 @@ class DownloadManager {
      * Notify all listeners of an event
      */
     notify(event, data) {
-        this.listeners.forEach(callback => {
+        this.listeners.forEach((callback) => {
             try {
                 callback(event, data);
             } catch (e) {
@@ -204,7 +210,7 @@ class DownloadManager {
             const request = store.getAll();
 
             request.onsuccess = () => {
-                const items = request.result.filter(item => item.status === 'complete');
+                const items = request.result.filter((item) => item.status === 'complete');
                 resolve(items);
             };
             request.onerror = () => reject(request.error);
@@ -219,12 +225,14 @@ class DownloadManager {
         // RunTimeTicks is in 100-nanosecond units (10,000,000 = 1 second)
         const runtimeTicks = item.RunTimeTicks;
         if (!runtimeTicks) return 0;
-        
+
         const durationSeconds = runtimeTicks / 10000000;
         // Estimate: 896 kbps = 0.112 MB/s
         const estimatedBytes = durationSeconds * 0.112 * 1024 * 1024;
-        
-        console.log(`Estimated size for ${Math.round(durationSeconds / 60)}min video: ${Math.round(estimatedBytes / 1024 / 1024)}MB`);
+
+        console.log(
+            `Estimated size for ${Math.round(durationSeconds / 60)}min video: ${Math.round(estimatedBytes / 1024 / 1024)}MB`
+        );
         return Math.round(estimatedBytes);
     }
 
@@ -270,10 +278,10 @@ class DownloadManager {
         // Try to use service worker for background download
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
             console.log('Using service worker for background download');
-            
+
             // Store pending download info
             this.pendingDownloads.set(itemId, { item });
-            
+
             // Send download request to service worker
             navigator.serviceWorker.controller.postMessage({
                 type: 'DOWNLOAD_VIDEO',
@@ -289,13 +297,13 @@ class DownloadManager {
             this.downloadInForeground(item, streamUrl, thumbnailUrl, estimatedSize);
         }
     }
-    
+
     /**
      * Fallback foreground download (when service worker unavailable)
      */
     async downloadInForeground(item, streamUrl, thumbnailUrl, estimatedSize) {
         const itemId = item.Id;
-        
+
         try {
             // Download thumbnail first
             if (thumbnailUrl) {
@@ -333,16 +341,21 @@ class DownloadManager {
                 const now = Date.now();
                 if (now - lastProgressUpdate > 100) {
                     lastProgressUpdate = now;
-                    
+
                     let progress;
                     if (estimatedSize > 0) {
                         progress = Math.min(99, Math.round((downloadedSize / estimatedSize) * 100));
                     } else {
                         progress = -1;
                     }
-                    
+
                     this.downloadProgress.set(itemId, progress);
-                    this.notify('downloadProgress', { itemId, progress, downloadedSize, totalSize: estimatedSize });
+                    this.notify('downloadProgress', {
+                        itemId,
+                        progress,
+                        downloadedSize,
+                        totalSize: estimatedSize
+                    });
                 }
             }
 
@@ -364,13 +377,15 @@ class DownloadManager {
             this.downloadProgress.set(itemId, 100);
             this.notify('downloadComplete', { itemId, item, size: videoBlob.size });
 
-            console.log('Download complete:', item.Name || itemId, `(${Math.round(videoBlob.size / 1024 / 1024)}MB)`);
-
+            console.log(
+                'Download complete:',
+                item.Name || itemId,
+                `(${Math.round(videoBlob.size / 1024 / 1024)}MB)`
+            );
         } catch (error) {
             console.error('Download failed:', error);
             this.notify('downloadError', { itemId, error: error.message });
             await this.deleteDownload(itemId);
-
         } finally {
             this.activeDownloads.delete(itemId);
             this.downloadProgress.delete(itemId);
@@ -431,11 +446,11 @@ class DownloadManager {
             console.log('Fetching HLS manifest:', hlsUrl);
             const masterResponse = await fetch(hlsUrl);
             const masterPlaylist = await masterResponse.text();
-            
+
             // Parse to find the media playlist URL
             const lines = masterPlaylist.split('\n');
             let mediaPlaylistUrl = null;
-            
+
             for (const line of lines) {
                 const trimmed = line.trim();
                 if (trimmed && !trimmed.startsWith('#')) {
@@ -469,8 +484,11 @@ class DownloadManager {
             // We need to preserve EXTINF durations for rebuilding the manifest
             const segmentInfos = [];
             const mediaLines = mediaPlaylist.split('\n');
-            const mediaBaseUrl = mediaPlaylistUrl.substring(0, mediaPlaylistUrl.lastIndexOf('/') + 1);
-            
+            const mediaBaseUrl = mediaPlaylistUrl.substring(
+                0,
+                mediaPlaylistUrl.lastIndexOf('/') + 1
+            );
+
             let currentDuration = null;
             for (const line of mediaLines) {
                 const trimmed = line.trim();
@@ -495,33 +513,37 @@ class DownloadManager {
 
             // Download and store each segment individually
             let totalSize = 0;
-            
+
             for (let i = 0; i < segmentInfos.length; i++) {
                 const segmentInfo = segmentInfos[i];
-                
+
                 const segmentResponse = await fetch(segmentInfo.url);
                 if (!segmentResponse.ok) {
                     throw new Error(`Failed to download segment ${i}: ${segmentResponse.status}`);
                 }
-                
+
                 const segmentBlob = await segmentResponse.blob();
                 totalSize += segmentBlob.size;
-                
+
                 // Save segment to IndexedDB with its duration
                 await this.saveSegment(itemId, i, segmentBlob, segmentInfo.duration);
-                
+
                 // Update progress
                 const progress = Math.round(((i + 1) / segmentInfos.length) * 100);
                 this.downloadProgress.set(itemId, progress);
-                this.notify('downloadProgress', { 
-                    itemId, 
-                    progress, 
+                this.notify('downloadProgress', {
+                    itemId,
+                    progress,
                     downloadedSize: i + 1,
-                    totalSize: segmentInfos.length 
+                    totalSize: segmentInfos.length
                 });
             }
 
-            console.log('HLS download complete:', `${Math.round(totalSize / 1024 / 1024)}MB`, `${segmentInfos.length} segments`);
+            console.log(
+                'HLS download complete:',
+                `${Math.round(totalSize / 1024 / 1024)}MB`,
+                `${segmentInfos.length} segments`
+            );
 
             // Update metadata with final info
             await this.saveMetadata({
@@ -531,12 +553,11 @@ class DownloadManager {
                 downloadedAt: Date.now(),
                 size: totalSize,
                 segmentCount: segmentInfos.length,
-                isHls: true  // Flag to indicate HLS playback needed
+                isHls: true // Flag to indicate HLS playback needed
             });
 
             this.downloadProgress.set(itemId, 100);
             this.notify('downloadComplete', { itemId, item, size: totalSize });
-
         } catch (error) {
             console.error('HLS download failed:', error);
             this.notify('downloadError', { itemId, error: error.message });
@@ -546,7 +567,7 @@ class DownloadManager {
             this.downloadProgress.delete(itemId);
         }
     }
-    
+
     /**
      * Save a single HLS segment to IndexedDB
      */
@@ -554,18 +575,18 @@ class DownloadManager {
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(['segments'], 'readwrite');
             const store = transaction.objectStore('segments');
-            const request = store.put({ 
-                itemId, 
-                index, 
-                blob, 
-                duration 
+            const request = store.put({
+                itemId,
+                index,
+                blob,
+                duration
             });
 
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
         });
     }
-    
+
     /**
      * Get all segments for an item
      */
@@ -586,45 +607,45 @@ class DownloadManager {
             request.onerror = () => reject(request.error);
         });
     }
-    
+
     /**
      * Generate a blob URL manifest for offline HLS playback
      * Returns { manifestUrl, segmentUrls } - caller must revoke URLs when done
      */
     async getHlsPlaybackUrls(itemId) {
         const segments = await this.getSegments(itemId);
-        
+
         if (segments.length === 0) {
             return null;
         }
-        
+
         // Create blob URLs for each segment
-        const segmentUrls = segments.map(seg => URL.createObjectURL(seg.blob));
-        
+        const segmentUrls = segments.map((seg) => URL.createObjectURL(seg.blob));
+
         // Build m3u8 manifest pointing to blob URLs
         let manifest = '#EXTM3U\n';
         manifest += '#EXT-X-VERSION:3\n';
         manifest += '#EXT-X-TARGETDURATION:10\n';
         manifest += '#EXT-X-MEDIA-SEQUENCE:0\n';
-        
+
         for (let i = 0; i < segments.length; i++) {
             manifest += `#EXTINF:${segments[i].duration},\n`;
             manifest += `${segmentUrls[i]}\n`;
         }
-        
+
         manifest += '#EXT-X-ENDLIST\n';
-        
+
         // Create blob URL for the manifest itself
         const manifestBlob = new Blob([manifest], { type: 'application/vnd.apple.mpegurl' });
         const manifestUrl = URL.createObjectURL(manifestBlob);
-        
+
         return {
             manifestUrl,
             segmentUrls,
             // Helper to clean up all URLs
             revokeAll: () => {
                 URL.revokeObjectURL(manifestUrl);
-                segmentUrls.forEach(url => URL.revokeObjectURL(url));
+                segmentUrls.forEach((url) => URL.revokeObjectURL(url));
             }
         };
     }
@@ -638,10 +659,10 @@ class DownloadManager {
         this.activeDownloads.delete(itemId);
         this.downloadProgress.delete(itemId);
         this.pendingDownloads.delete(itemId);
-        
+
         // Delete any partial download
         this.deleteDownload(itemId);
-        
+
         this.notify('downloadCancelled', { itemId });
     }
 

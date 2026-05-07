@@ -10,13 +10,13 @@ class TVNavigation {
         this.focusableElements = [];
         this.isEnabled = this.detectTV();
         this.gridColumns = 3; // Default for content grid
-        
+
         console.log('TinyFin TV Navigation:', {
             enabled: this.isEnabled,
             url: window.location.href,
             localStorage: localStorage.getItem('tinyfin_tvMode')
         });
-        
+
         if (this.isEnabled) {
             console.log('✅ TV mode ENABLED - D-pad navigation active');
             console.log('Use arrow keys to navigate, Enter to select, Escape to go back');
@@ -38,12 +38,12 @@ class TVNavigation {
             localStorage.setItem('tinyfin_tvMode', 'true');
             return true;
         }
-        
+
         // Check localStorage for saved TV mode preference
         if (localStorage.getItem('tinyfin_tvMode') === 'true') {
             return true;
         }
-        
+
         return false;
     }
 
@@ -53,13 +53,13 @@ class TVNavigation {
     init() {
         // Add TV mode class to body
         document.body.classList.add('tv-mode');
-        
+
         // Bind keyboard events
         this.bindKeyboardEvents();
-        
+
         // Update focusable elements when screen changes
         this.setupObservers();
-        
+
         // Initial focus
         setTimeout(() => this.updateFocusableElements(), 100);
     }
@@ -77,15 +77,15 @@ class TVNavigation {
     setupObservers() {
         // Observe screen changes
         const screens = [this.app.setupScreen, this.app.homeScreen, this.app.playerScreen];
-        
+
         const observer = new MutationObserver(() => {
             setTimeout(() => this.updateFocusableElements(), 50);
         });
-        
-        screens.forEach(screen => {
-            observer.observe(screen, { 
-                attributes: true, 
-                attributeFilter: ['class'] 
+
+        screens.forEach((screen) => {
+            observer.observe(screen, {
+                attributes: true,
+                attributeFilter: ['class']
             });
         });
 
@@ -93,10 +93,10 @@ class TVNavigation {
         const gridObserver = new MutationObserver(() => {
             setTimeout(() => this.updateFocusableElements(), 50);
         });
-        
-        gridObserver.observe(this.app.contentGrid, { 
-            childList: true, 
-            subtree: true 
+
+        gridObserver.observe(this.app.contentGrid, {
+            childList: true,
+            subtree: true
         });
     }
 
@@ -107,7 +107,7 @@ class TVNavigation {
         if (!this.isEnabled) return;
 
         const key = e.key;
-        
+
         // D-pad navigation
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
             e.preventDefault();
@@ -135,7 +135,6 @@ class TVNavigation {
             if (this.isPlayerActive()) {
                 this.app.togglePlayPause();
             }
-            return;
         }
     }
 
@@ -144,20 +143,19 @@ class TVNavigation {
      */
     navigate(direction) {
         this.updateFocusableElements();
-        
+
         if (this.focusableElements.length === 0) return;
 
-        let newIndex = this.currentFocusIndex;
-
         // Check if we're in a grid layout (home screen)
-        if (this.isHomeScreenActive()) {
-            newIndex = this.navigateGrid(direction);
-        } else {
-            // Linear navigation for setup and other screens
-            newIndex = this.navigateLinear(direction);
-        }
+        const newIndex = this.isHomeScreenActive()
+            ? this.navigateGrid(direction)
+            : this.navigateLinear(direction);
 
-        if (newIndex !== this.currentFocusIndex && newIndex >= 0 && newIndex < this.focusableElements.length) {
+        if (
+            newIndex !== this.currentFocusIndex &&
+            newIndex >= 0 &&
+            newIndex < this.focusableElements.length
+        ) {
             this.currentFocusIndex = newIndex;
             this.focusElement(this.focusableElements[newIndex]);
         }
@@ -167,17 +165,18 @@ class TVNavigation {
      * Navigate in grid layout (content cards)
      */
     navigateGrid(direction) {
-        const total = this.focusableElements.length;
-        let newIndex = this.currentFocusIndex;
+        const newIndex = this.currentFocusIndex;
 
         // Calculate grid columns dynamically based on visible nav buttons
-        const navButtons = this.focusableElements.filter(el => el.classList.contains('nav-btn'));
-        const contentCards = this.focusableElements.filter(el => el.classList.contains('content-card'));
-        
+        const navButtons = this.focusableElements.filter((el) => el.classList.contains('nav-btn'));
+        const contentCards = this.focusableElements.filter((el) =>
+            el.classList.contains('content-card')
+        );
+
         // If we're in nav buttons
         if (this.focusableElements[this.currentFocusIndex].classList.contains('nav-btn')) {
             const navIndex = navButtons.indexOf(this.focusableElements[this.currentFocusIndex]);
-            
+
             switch (direction) {
                 case 'ArrowLeft':
                     if (navIndex > 0) {
@@ -203,7 +202,7 @@ class TVNavigation {
         if (this.focusableElements[this.currentFocusIndex].classList.contains('content-card')) {
             const cardIndex = contentCards.indexOf(this.focusableElements[this.currentFocusIndex]);
             const cols = this.gridColumns;
-            
+
             switch (direction) {
                 case 'ArrowLeft':
                     if (cardIndex % cols !== 0) {
@@ -218,11 +217,9 @@ class TVNavigation {
                 case 'ArrowUp':
                     if (cardIndex >= cols) {
                         return this.focusableElements.indexOf(contentCards[cardIndex - cols]);
-                    } else {
+                    } else if (navButtons.length > 0) {
                         // Move to nav buttons
-                        if (navButtons.length > 0) {
-                            return this.focusableElements.indexOf(navButtons[0]);
-                        }
+                        return this.focusableElements.indexOf(navButtons[0]);
                     }
                     break;
                 case 'ArrowDown':
@@ -284,7 +281,7 @@ class TVNavigation {
 
         this.focusableElements = Array.from(
             activeScreen.querySelectorAll(selectors.join(','))
-        ).filter(el => {
+        ).filter((el) => {
             // Filter out hidden elements
             const style = window.getComputedStyle(el);
             return style.display !== 'none' && style.visibility !== 'hidden';
@@ -296,7 +293,10 @@ class TVNavigation {
         }
 
         // Focus first element if nothing focused
-        if (this.focusableElements.length > 0 && !document.activeElement?.matches(selectors.join(','))) {
+        if (
+            this.focusableElements.length > 0 &&
+            !document.activeElement?.matches(selectors.join(','))
+        ) {
             this.focusElement(this.focusableElements[this.currentFocusIndex]);
         }
     }
@@ -308,17 +308,17 @@ class TVNavigation {
         if (!element) return;
 
         // Remove previous focus
-        this.focusableElements.forEach(el => el.classList.remove('tv-focused'));
+        this.focusableElements.forEach((el) => el.classList.remove('tv-focused'));
 
         // Add focus class
         element.classList.add('tv-focused');
-        
+
         // Actually focus the element
         element.focus();
 
         // Scroll element into view if needed
-        element.scrollIntoView({ 
-            behavior: 'smooth', 
+        element.scrollIntoView({
+            behavior: 'smooth',
             block: 'nearest',
             inline: 'nearest'
         });
@@ -359,7 +359,6 @@ class TVNavigation {
         // If delete confirm modal is open, close it
         if (!this.app.deleteConfirmModal.classList.contains('hidden')) {
             this.app.hideDeleteConfirmation();
-            return;
         }
     }
 

@@ -9,20 +9,20 @@ class TinyFinApp {
         this.setupScreen = document.getElementById('setup-screen');
         this.homeScreen = document.getElementById('home-screen');
         this.playerScreen = document.getElementById('player-screen');
-        
+
         // Setup elements
         this.serverUrlInput = document.getElementById('server-url');
         this.usernameInput = document.getElementById('username');
         this.passwordInput = document.getElementById('password');
         this.connectBtn = document.getElementById('connect-btn');
         this.setupError = document.getElementById('setup-error');
-        
+
         // Home elements
         this.contentGrid = document.getElementById('content-grid');
         this.navButtons = document.querySelectorAll('.nav-btn[data-filter]');
         this.settingsBtn = document.querySelector('.settings-btn');
         this.loading = document.getElementById('loading');
-        
+
         // Player elements
         this.videoPlayer = document.getElementById('video-player');
         this.playerOverlay = document.getElementById('player-overlay');
@@ -32,13 +32,13 @@ class TinyFinApp {
         this.relatedDrawer = document.getElementById('related-drawer');
         this.drawerContent = document.getElementById('drawer-content');
         this.swipeHint = document.getElementById('swipe-hint');
-        
+
         // Settings modal
         this.settingsModal = document.getElementById('settings-modal');
         this.logoutBtn = document.getElementById('logout-btn');
         this.clearDownloadsBtn = document.getElementById('clear-downloads-btn');
         this.closeSettingsBtn = document.getElementById('close-settings');
-        
+
         // Delete confirmation modal
         this.deleteConfirmModal = document.getElementById('delete-confirm-modal');
         this.mathNum1 = document.getElementById('math-num1');
@@ -47,7 +47,7 @@ class TinyFinApp {
         this.cancelDeleteBtn = document.getElementById('cancel-delete-btn');
         this.pendingDeleteItemId = null;
         this.pendingDeleteAll = false;
-        
+
         // State
         this.currentFilter = 'videos';
         this.currentItem = null;
@@ -57,39 +57,39 @@ class TinyFinApp {
         this.touchStartY = 0;
         this.progressInterval = null;
         this.hls = null; // HLS.js instance
-        
+
         // Pagination state
         this.pageSize = 30;
         this.currentPage = 0;
         this.totalItems = 0;
         this.isLoadingMore = false;
         this.hasMoreItems = true;
-        
+
         // Playback state
         this.isStartingPlayback = false;
-        this.offlineHlsUrls = null;  // For cleanup of offline HLS blob URLs
-        this.localProgressInterval = null;  // For saving offline playback position
-        
+        this.offlineHlsUrls = null; // For cleanup of offline HLS blob URLs
+        this.localProgressInterval = null; // For saving offline playback position
+
         // Download state - track which items are downloaded (loaded on init)
         this.downloadedItemIds = new Set();
-        
+
         // Auto-hide nav bar state
         this.lastScrollTop = 0;
         this.navBar = document.querySelector('.nav-bar');
-        
+
         // TV shows grouping state
         this.seriesExpandedCount = new Map(); // Track how many episodes shown per series
         this.seriesDefaultCount = 10; // Show 10 episodes initially
-        
+
         this.init();
     }
 
     async init() {
         this.bindEvents();
-        
+
         // Initialize download manager
         await this.initDownloadManager();
-        
+
         // Check for saved session
         try {
             const isValid = await jellyfinAPI.validateSession();
@@ -103,51 +103,51 @@ class TinyFinApp {
             this.showSetup();
         }
     }
-    
+
     /**
      * Initialize download manager and set up listeners
      */
     async initDownloadManager() {
         try {
             await downloadManager.init();
-            
+
             // Load downloaded item IDs for quick lookup
             const downloadedItems = await downloadManager.getDownloadedItems();
-            this.downloadedItemIds = new Set(downloadedItems.map(item => item.itemId));
+            this.downloadedItemIds = new Set(downloadedItems.map((item) => item.itemId));
             console.log('Downloaded items:', this.downloadedItemIds.size);
-            
+
             // Listen for download events
             downloadManager.addListener((event, data) => this.handleDownloadEvent(event, data));
         } catch (error) {
             console.warn('Failed to initialize download manager:', error);
         }
     }
-    
+
     /**
      * Handle download manager events
      */
     handleDownloadEvent(event, data) {
         console.log('Download event:', event, data);
-        
+
         switch (event) {
             case 'downloadStarted':
                 this.updateCardDownloadState(data.itemId, 'downloading', 0);
                 break;
-                
+
             case 'downloadProgress':
                 this.updateCardDownloadState(data.itemId, 'downloading', data.progress);
                 break;
-                
+
             case 'downloadComplete':
                 this.downloadedItemIds.add(data.itemId);
                 this.updateCardDownloadState(data.itemId, 'downloaded');
                 break;
-                
+
             case 'downloadCancelled':
             case 'downloadError':
                 this.updateCardDownloadState(data.itemId, 'none');
                 break;
-                
+
             case 'downloadDeleted':
                 this.downloadedItemIds.delete(data.itemId);
                 this.updateCardDownloadState(data.itemId, 'none');
@@ -158,23 +158,23 @@ class TinyFinApp {
                 break;
         }
     }
-    
+
     /**
      * Update the download state visual on a card
      */
     updateCardDownloadState(itemId, state, progress = 0) {
         const card = document.querySelector(`.content-card[data-id="${itemId}"]`);
         if (!card) return;
-        
+
         // Remove existing download UI
         const existingBtn = card.querySelector('.download-btn');
         const existingProgress = card.querySelector('.download-progress');
         const existingBadge = card.querySelector('.downloaded-badge');
-        
+
         existingBtn?.remove();
         existingProgress?.remove();
         existingBadge?.remove();
-        
+
         // Add new UI based on state
         if (state === 'downloading') {
             card.insertAdjacentHTML('beforeend', this.createDownloadProgressUI(progress));
@@ -194,7 +194,7 @@ class TinyFinApp {
             }
         }
     }
-    
+
     /**
      * Create download button HTML
      */
@@ -208,13 +208,13 @@ class TinyFinApp {
             </button>
         `;
     }
-    
+
     /**
      * Create download progress ring HTML
      */
     createDownloadProgressUI(progress) {
         const circumference = 2 * Math.PI * 18; // radius = 18
-        
+
         // Handle indeterminate state (progress = -1)
         if (progress < 0) {
             return `
@@ -227,9 +227,9 @@ class TinyFinApp {
                 </div>
             `;
         }
-        
+
         const offset = circumference - (progress / 100) * circumference;
-        
+
         return `
             <div class="download-progress">
                 <svg viewBox="0 0 44 44">
@@ -241,7 +241,7 @@ class TinyFinApp {
             </div>
         `;
     }
-    
+
     /**
      * Create downloaded badge HTML
      */
@@ -254,7 +254,7 @@ class TinyFinApp {
             </div>
         `;
     }
-    
+
     /**
      * Handle download button click
      */
@@ -265,40 +265,44 @@ class TinyFinApp {
             downloadManager.cancelDownload(itemId);
             return;
         }
-        
+
         // Check if already downloaded
         if (await downloadManager.isDownloaded(itemId)) {
             // Show delete confirmation (long press is handled separately)
             return;
         }
-        
+
         // Start download
         try {
             // Get item details
             const item = await jellyfinAPI.getItem(itemId);
-            
+
             // Get playback info to get the stream URL
             const playbackInfo = await jellyfinAPI.getPlaybackInfo(itemId);
             const mediaSource = playbackInfo.MediaSources[0];
             const playSessionId = playbackInfo.PlaySessionId;
-            
+
             // Find preferred audio stream (Romanian if available)
             const audioStreamIndex = jellyfinAPI.findPreferredAudioStream(mediaSource);
-            
+
             // Get HLS manifest URL - we'll download all segments
-            const hlsUrl = this.getDownloadHlsUrl(itemId, mediaSource.Id, playSessionId, audioStreamIndex);
-            
+            const hlsUrl = this.getDownloadHlsUrl(
+                itemId,
+                mediaSource.Id,
+                playSessionId,
+                audioStreamIndex
+            );
+
             // Get thumbnail URL
             const thumbnailUrl = jellyfinAPI.getThumbUrl(item, { width: 400, height: 225 });
-            
+
             // Start HLS download (downloads all segments and combines them)
             downloadManager.downloadHlsVideo(item, hlsUrl, thumbnailUrl);
-            
         } catch (error) {
             console.error('Failed to start download:', error);
         }
     }
-    
+
     /**
      * Get HLS manifest URL for downloading
      * We'll download all HLS segments and combine them - this ensures:
@@ -313,31 +317,31 @@ class TinyFinApp {
             PlaySessionId: playSessionId,
             api_key: jellyfinAPI.accessToken,
             DeviceId: jellyfinAPI.deviceId,
-            
+
             // Video settings - 360p
             VideoCodec: 'h264',
             MaxWidth: 640,
             MaxHeight: 360,
             VideoBitRate: 800000,
-            
+
             // Audio settings
             AudioCodec: 'aac',
             AudioBitRate: 96000,
             MaxAudioChannels: 2,
             TranscodingMaxAudioChannels: 2,
-            
+
             // HLS settings
             SegmentContainer: 'ts',
             MinSegments: 1
         });
-        
+
         if (audioStreamIndex !== null) {
             params.set('AudioStreamIndex', audioStreamIndex);
         }
-        
+
         return `${jellyfinAPI.serverUrl}/Videos/${itemId}/master.m3u8?${params}`;
     }
-    
+
     /**
      * Handle long press on downloaded items (for deletion)
      */
@@ -346,7 +350,7 @@ class TinyFinApp {
             this.promptDeleteConfirmation(itemId, false);
         }
     }
-    
+
     /**
      * Show delete confirmation modal with math question
      * @param {string|null} itemId - Item to delete, or null for all
@@ -355,15 +359,15 @@ class TinyFinApp {
     promptDeleteConfirmation(itemId, deleteAll = false) {
         this.pendingDeleteItemId = itemId;
         this.pendingDeleteAll = deleteAll;
-        
+
         // Generate simple addition (numbers 1-5)
         const num1 = Math.floor(Math.random() * 5) + 1;
         const num2 = Math.floor(Math.random() * 5) + 1;
         const correctAnswer = num1 + num2;
-        
+
         this.mathNum1.textContent = num1;
         this.mathNum2.textContent = num2;
-        
+
         // Generate answer options (correct + 3 wrong)
         const answers = new Set([correctAnswer]);
         while (answers.size < 4) {
@@ -373,37 +377,41 @@ class TinyFinApp {
                 answers.add(wrong);
             }
         }
-        
+
         // Shuffle answers
         const shuffled = [...answers].sort(() => Math.random() - 0.5);
-        
+
         // Render answer buttons
-        this.mathAnswers.innerHTML = shuffled.map(answer => `
+        this.mathAnswers.innerHTML = shuffled
+            .map(
+                (answer) => `
             <button class="math-answer-btn" data-answer="${answer}" data-correct="${answer === correctAnswer}">
                 ${answer}
             </button>
-        `).join('');
-        
+        `
+            )
+            .join('');
+
         // Add click handlers
-        this.mathAnswers.querySelectorAll('.math-answer-btn').forEach(btn => {
+        this.mathAnswers.querySelectorAll('.math-answer-btn').forEach((btn) => {
             btn.addEventListener('click', () => this.handleMathAnswer(btn));
         });
-        
+
         // Show modal
         this.deleteConfirmModal.classList.remove('hidden');
         this.hideSettings(); // Close settings if open
     }
-    
+
     /**
      * Handle math answer click
      */
     async handleMathAnswer(btn) {
         const isCorrect = btn.dataset.correct === 'true';
-        
+
         if (isCorrect) {
             // Correct! Proceed with deletion
             this.hideDeleteConfirmation();
-            
+
             if (this.pendingDeleteAll) {
                 await this.executeClearDownloads();
             } else if (this.pendingDeleteItemId) {
@@ -415,7 +423,7 @@ class TinyFinApp {
             setTimeout(() => btn.classList.remove('wrong'), 500);
         }
     }
-    
+
     /**
      * Hide delete confirmation modal
      */
@@ -437,12 +445,12 @@ class TinyFinApp {
         this.passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.handleConnect();
         });
-        
+
         // Navigation events
-        this.navButtons.forEach(btn => {
+        this.navButtons.forEach((btn) => {
             btn.addEventListener('click', () => this.handleNavigation(btn.dataset.filter));
         });
-        
+
         // Online/offline events - update nav visibility
         window.addEventListener('online', () => {
             console.log('Back online');
@@ -454,19 +462,21 @@ class TinyFinApp {
             this.updateNavVisibility();
             this.updateOfflineIndicator();
         });
-        
+
         // Settings events
         this.settingsBtn.addEventListener('click', () => this.showSettings());
         this.logoutBtn.addEventListener('click', () => this.handleLogout());
-        this.clearDownloadsBtn.addEventListener('click', () => this.promptDeleteConfirmation(null, true));
+        this.clearDownloadsBtn.addEventListener('click', () =>
+            this.promptDeleteConfirmation(null, true)
+        );
         this.closeSettingsBtn.addEventListener('click', () => this.hideSettings());
         this.settingsModal.addEventListener('click', (e) => {
             if (e.target === this.settingsModal) this.hideSettings();
         });
-        
+
         // Delete confirmation modal events
         this.cancelDeleteBtn.addEventListener('click', () => this.hideDeleteConfirmation());
-        
+
         // Player events
         this.videoPlayer.addEventListener('click', () => this.toggleOverlay());
         this.playPauseBtn.addEventListener('click', (e) => {
@@ -478,7 +488,7 @@ class TinyFinApp {
             e.stopPropagation();
             this.handleRestart();
         });
-        
+
         this.videoPlayer.addEventListener('play', () => {
             this.updatePlayPauseIcon(true);
             // Hide overlay and restart button when video starts playing
@@ -493,12 +503,18 @@ class TinyFinApp {
             }
         });
         this.videoPlayer.addEventListener('ended', () => this.handleVideoEnded());
-        
+
         // Drawer swipe handling
-        this.playerScreen.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
-        this.playerScreen.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
-        this.playerScreen.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: true });
-        
+        this.playerScreen.addEventListener('touchstart', (e) => this.handleTouchStart(e), {
+            passive: true
+        });
+        this.playerScreen.addEventListener('touchmove', (e) => this.handleTouchMove(e), {
+            passive: false
+        });
+        this.playerScreen.addEventListener('touchend', (e) => this.handleTouchEnd(e), {
+            passive: true
+        });
+
         // Online/offline events
         window.addEventListener('online', () => {
             console.log('Back online');
@@ -508,12 +524,12 @@ class TinyFinApp {
                 this.loadContent();
             }
         });
-        
+
         window.addEventListener('offline', () => {
             console.log('Gone offline');
             this.updateOfflineIndicator();
         });
-        
+
         // Infinite scroll - listen on home screen element
         let scrollTimeout = null;
         const scrollHandler = () => {
@@ -524,15 +540,19 @@ class TinyFinApp {
                 }, 100);
             }
         };
-        
+
         // Listen on home screen (which now scrolls)
         this.homeScreen.addEventListener('scroll', scrollHandler, { passive: true });
-        
+
         // Also check on touchend for mobile momentum scrolling
-        this.homeScreen.addEventListener('touchend', () => {
-            setTimeout(() => this.handleScroll(), 300);
-        }, { passive: true });
-        
+        this.homeScreen.addEventListener(
+            'touchend',
+            () => {
+                setTimeout(() => this.handleScroll(), 300);
+            },
+            { passive: true }
+        );
+
         // Hide overlay after inactivity
         let overlayTimeout;
         this.playerScreen.addEventListener('touchstart', () => {
@@ -551,7 +571,7 @@ class TinyFinApp {
     // ==================== SCREEN MANAGEMENT ====================
 
     showScreen(screen) {
-        [this.setupScreen, this.homeScreen, this.playerScreen].forEach(s => {
+        [this.setupScreen, this.homeScreen, this.playerScreen].forEach((s) => {
             s.classList.add('hidden');
         });
         screen.classList.remove('hidden');
@@ -566,10 +586,10 @@ class TinyFinApp {
 
     async showHome() {
         this.showScreen(this.homeScreen);
-        
+
         // Update nav visibility and switch to downloads if offline
         this.updateNavVisibility();
-        
+
         await this.loadContent();
     }
 
@@ -609,7 +629,7 @@ class TinyFinApp {
         try {
             // Save server URL for next time
             localStorage.setItem('tinyfin_lastServerUrl', serverUrl);
-            
+
             await jellyfinAPI.connect(serverUrl, username, password);
             this.showHome();
         } catch (error) {
@@ -626,7 +646,7 @@ class TinyFinApp {
         this.passwordInput.value = '';
         this.showSetup();
     }
-    
+
     /**
      * Execute clearing all downloads (called after confirmation)
      */
@@ -634,12 +654,12 @@ class TinyFinApp {
         try {
             await downloadManager.clearAllDownloads();
             this.downloadedItemIds.clear();
-            
+
             // Refresh if viewing downloads
             if (this.currentFilter === 'downloads') {
                 this.loadContent();
             }
-            
+
             console.log('All downloads cleared');
         } catch (error) {
             console.error('Failed to clear downloads:', error);
@@ -703,7 +723,7 @@ class TinyFinApp {
     isOnline() {
         return navigator.onLine;
     }
-    
+
     /**
      * Shuffle an array (Fisher-Yates)
      */
@@ -724,19 +744,19 @@ class TinyFinApp {
         if (indicator) {
             indicator.classList.toggle('hidden', this.isOnline());
         }
-        
+
         // Show/hide nav tabs based on online status
         this.updateNavVisibility();
     }
-    
+
     /**
      * Update navigation tabs visibility based on online/offline status
      */
     updateNavVisibility() {
         const isOnline = this.isOnline();
-        
+
         // Show/hide tabs based on online status
-        this.navButtons.forEach(btn => {
+        this.navButtons.forEach((btn) => {
             const filter = btn.dataset.filter;
             if (filter === 'downloads') {
                 // Only show downloads when offline
@@ -746,12 +766,12 @@ class TinyFinApp {
                 btn.classList.toggle('hidden', !isOnline);
             }
         });
-        
+
         // If offline and not already on downloads, switch to it
         if (!isOnline && this.currentFilter !== 'downloads') {
             this.handleNavigation('downloads');
         }
-        
+
         // If online and currently on downloads (which is now hidden), switch to videos
         if (isOnline && this.currentFilter === 'downloads') {
             this.handleNavigation('videos');
@@ -784,7 +804,7 @@ class TinyFinApp {
                 this.setLoading(false);
                 return;
             }
-            
+
             let fromCache = false;
 
             // Try loading from network first
@@ -807,7 +827,7 @@ class TinyFinApp {
 
             this.renderContent(this.allItems);
             this.updateOfflineIndicator();
-            
+
             if (fromCache && this.allItems.length > 0) {
                 console.log('Showing cached content');
             }
@@ -818,29 +838,29 @@ class TinyFinApp {
             this.setLoading(false);
         }
     }
-    
+
     /**
      * Load downloaded content from IndexedDB
      */
     async loadDownloadedContent() {
         try {
             const downloadedItems = await downloadManager.getDownloadedItems();
-            
+
             if (downloadedItems.length === 0) {
                 this.contentGrid.innerHTML = this.createEmptyState();
                 return;
             }
-            
+
             // Convert stored items to displayable format
-            this.allItems = downloadedItems.map(d => d.item);
+            this.allItems = downloadedItems.map((d) => d.item);
             this.hasMoreItems = false;
-            
+
             // Render with special handling for thumbnails
             this.contentGrid.innerHTML = '';
-            
+
             for (const downloadedItem of downloadedItems) {
                 const item = downloadedItem.item;
-                
+
                 // Try to get cached thumbnail
                 let thumbnailUrl = null;
                 try {
@@ -851,27 +871,26 @@ class TinyFinApp {
                         thumbnailUrl = jellyfinAPI.getThumbUrl(item, { width: 400, height: 225 });
                     }
                 }
-                
+
                 const cardHtml = this.createDownloadedContentCard(item, thumbnailUrl);
                 this.contentGrid.insertAdjacentHTML('beforeend', cardHtml);
             }
-            
+
             // Attach event handlers (including delete buttons)
             this.attachDownloadedCardEventHandlers(this.contentGrid);
-            
         } catch (error) {
             console.error('Failed to load downloaded content:', error);
             this.contentGrid.innerHTML = this.createEmptyState();
         }
     }
-    
+
     /**
      * Attach event handlers specifically for downloaded content cards (with delete button)
      */
     attachDownloadedCardEventHandlers(container) {
-        container.querySelectorAll('.content-card').forEach(card => {
+        container.querySelectorAll('.content-card').forEach((card) => {
             const itemId = card.dataset.id;
-            
+
             // Play on click (but not if clicking delete button)
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.delete-download-btn')) {
@@ -879,7 +898,7 @@ class TinyFinApp {
                 }
                 this.playItem(itemId);
             });
-            
+
             // Delete button click
             const deleteBtn = card.querySelector('.delete-download-btn');
             if (deleteBtn) {
@@ -890,14 +909,14 @@ class TinyFinApp {
             }
         });
     }
-    
+
     /**
      * Handle deleting a single download (shows confirmation first)
      */
     handleDeleteDownload(itemId) {
         this.promptDeleteConfirmation(itemId, false);
     }
-    
+
     /**
      * Execute deleting a single download (called after confirmation)
      */
@@ -905,40 +924,40 @@ class TinyFinApp {
         try {
             await downloadManager.deleteDownload(itemId);
             this.downloadedItemIds.delete(itemId);
-            
+
             // Remove the card from the grid
             const card = this.contentGrid.querySelector(`.content-card[data-id="${itemId}"]`);
             if (card) {
                 card.remove();
             }
-            
+
             // Show empty state if no more downloads
             if (this.contentGrid.children.length === 0) {
                 this.contentGrid.innerHTML = this.createEmptyState();
             }
-            
+
             console.log('Download deleted:', itemId);
         } catch (error) {
             console.error('Failed to delete download:', error);
         }
     }
-    
+
     /**
      * Create a content card for downloaded items (with local thumbnail and delete button)
      */
     createDownloadedContentCard(item, thumbnailUrl) {
         const isEpisode = item.Type === 'Episode';
-        
+
         const placeholder = `data:image/svg+xml,${encodeURIComponent(`
             <svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225">
                 <rect fill="#E0E0E0" width="400" height="225"/>
                 <polygon points="180,90 180,135 215,112.5" fill="#BDBDBD"/>
             </svg>
         `)}`;
-        
+
         // Downloaded badge on left
         let badges = this.createDownloadedBadgeUI();
-        
+
         // Delete button on right
         badges += `
             <button class="delete-download-btn" aria-label="Delete download">
@@ -947,11 +966,11 @@ class TinyFinApp {
                 </svg>
             </button>
         `;
-        
+
         if (isEpisode && item.IndexNumber) {
             badges += `<div class="episode-badge">${item.IndexNumber}</div>`;
         }
-        
+
         return `
             <div class="content-card" data-id="${item.Id}" data-type="${item.Type}" data-series-id="${item.SeriesId || ''}">
                 <img src="${thumbnailUrl || placeholder}" 
@@ -993,8 +1012,8 @@ class TinyFinApp {
                 result = await jellyfinAPI.getMusicNoah(this.pageSize, startIndex);
                 break;
             default:
-                result = await jellyfinAPI.getAllItems({ 
-                    sortBy: 'SortName', 
+                result = await jellyfinAPI.getAllItems({
+                    sortBy: 'SortName',
                     limit: this.pageSize,
                     startIndex: startIndex
                 });
@@ -1002,10 +1021,10 @@ class TinyFinApp {
 
         const newItems = result.Items || [];
         this.totalItems = result.TotalRecordCount || 0;
-        
+
         // Append to existing items
         this.allItems = [...this.allItems, ...newItems];
-        
+
         // Check if there are more items
         this.hasMoreItems = this.allItems.length < this.totalItems;
         this.currentPage = page;
@@ -1084,11 +1103,11 @@ class TinyFinApp {
             this.renderGroupedShows(this.allItems);
         } else {
             const temp = document.createElement('div');
-            temp.innerHTML = items.map(item => this.createContentCard(item)).join('');
-            
+            temp.innerHTML = items.map((item) => this.createContentCard(item)).join('');
+
             // Attach event handlers
             this.attachCardEventHandlers(temp);
-            
+
             // Move cards to grid
             while (temp.firstChild) {
                 this.contentGrid.appendChild(temp.firstChild);
@@ -1127,7 +1146,12 @@ class TinyFinApp {
 
         // Load more when user scrolls near bottom
         if (distanceFromBottom < 400) {
-            console.log('Triggering load more', { distanceFromBottom, scrollTop, scrollHeight, clientHeight });
+            console.log('Triggering load more', {
+                distanceFromBottom,
+                scrollTop,
+                scrollHeight,
+                clientHeight
+            });
             this.loadMoreContent();
         }
     }
@@ -1165,7 +1189,7 @@ class TinyFinApp {
         if (this.currentFilter === 'shows') {
             this.renderGroupedShows(items);
         } else {
-            this.contentGrid.innerHTML = items.map(item => this.createContentCard(item)).join('');
+            this.contentGrid.innerHTML = items.map((item) => this.createContentCard(item)).join('');
             this.attachCardEventHandlers(this.contentGrid);
         }
     }
@@ -1177,11 +1201,11 @@ class TinyFinApp {
     renderGroupedShows(episodes) {
         // Group episodes by series
         const seriesMap = new Map();
-        
-        episodes.forEach(episode => {
+
+        episodes.forEach((episode) => {
             const seriesId = episode.SeriesId;
             const seriesName = episode.SeriesName || 'Unknown Series';
-            
+
             if (!seriesMap.has(seriesId)) {
                 seriesMap.set(seriesId, {
                     name: seriesName,
@@ -1189,12 +1213,12 @@ class TinyFinApp {
                     episodes: []
                 });
             }
-            
+
             seriesMap.get(seriesId).episodes.push(episode);
         });
 
         // Sort episodes within each series
-        seriesMap.forEach(series => {
+        seriesMap.forEach((series) => {
             series.episodes.sort((a, b) => {
                 const seasonDiff = (a.ParentIndexNumber || 0) - (b.ParentIndexNumber || 0);
                 if (seasonDiff !== 0) return seasonDiff;
@@ -1203,29 +1227,31 @@ class TinyFinApp {
         });
 
         // Convert to array and sort by series name
-        const seriesArray = Array.from(seriesMap.values()).sort((a, b) => 
+        const seriesArray = Array.from(seriesMap.values()).sort((a, b) =>
             a.name.localeCompare(b.name)
         );
 
         // Render grouped content
         let html = '';
-        seriesArray.forEach(series => {
+        seriesArray.forEach((series) => {
             // Initialize expanded count if not set
             if (!this.seriesExpandedCount.has(series.id)) {
                 this.seriesExpandedCount.set(series.id, this.seriesDefaultCount);
             }
-            
+
             const showCount = this.seriesExpandedCount.get(series.id);
             const visibleEpisodes = series.episodes.slice(0, showCount);
             const hasMore = series.episodes.length > showCount;
-            
+
             html += `
                 <div class="series-group" data-series-id="${series.id}">
                     <h2 class="series-header">${series.name}</h2>
                     <div class="series-episodes">
-                        ${visibleEpisodes.map(episode => this.createContentCard(episode, true)).join('')}
+                        ${visibleEpisodes.map((episode) => this.createContentCard(episode, true)).join('')}
                     </div>
-                    ${hasMore ? `
+                    ${
+                        hasMore
+                            ? `
                         <button class="load-more-btn" data-series-id="${series.id}" aria-label="Load more episodes">
                             <svg viewBox="0 0 24 24" width="24" height="24">
                                 <circle cx="12" cy="12" r="10" stroke="#9C27B0" stroke-width="2" fill="none"/>
@@ -1233,7 +1259,9 @@ class TinyFinApp {
                             </svg>
                             <span>Load More (${series.episodes.length - showCount} more episodes)</span>
                         </button>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                 </div>
             `;
         });
@@ -1242,12 +1270,12 @@ class TinyFinApp {
         this.attachCardEventHandlers(this.contentGrid);
         this.attachLoadMoreHandlers();
     }
-    
+
     /**
      * Attach event handlers to "Load More" buttons
      */
     attachLoadMoreHandlers() {
-        this.contentGrid.querySelectorAll('.load-more-btn').forEach(btn => {
+        this.contentGrid.querySelectorAll('.load-more-btn').forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const seriesId = btn.dataset.seriesId;
@@ -1255,25 +1283,25 @@ class TinyFinApp {
             });
         });
     }
-    
+
     /**
      * Load more episodes for a specific series
      */
     loadMoreEpisodes(seriesId) {
         const currentCount = this.seriesExpandedCount.get(seriesId) || this.seriesDefaultCount;
         this.seriesExpandedCount.set(seriesId, currentCount + 10);
-        
+
         // Re-render shows (but this is now instant since we're not fetching)
         this.renderGroupedShows(this.allItems);
     }
-    
+
     /**
      * Attach event handlers to content cards
      */
     attachCardEventHandlers(container) {
-        container.querySelectorAll('.content-card').forEach(card => {
+        container.querySelectorAll('.content-card').forEach((card) => {
             const itemId = card.dataset.id;
-            
+
             // Play on click
             card.addEventListener('click', (e) => {
                 // Don't play if clicking download button
@@ -1282,7 +1310,7 @@ class TinyFinApp {
                 }
                 this.playItem(itemId);
             });
-            
+
             // Download button click
             const downloadBtn = card.querySelector('.download-btn');
             if (downloadBtn) {
@@ -1291,26 +1319,38 @@ class TinyFinApp {
                     this.handleDownloadClick(itemId);
                 });
             }
-            
+
             // Long press on downloaded badge to delete
             const downloadedBadge = card.querySelector('.downloaded-badge');
             if (downloadedBadge) {
                 let longPressTimer;
-                
-                downloadedBadge.addEventListener('touchstart', (e) => {
-                    e.stopPropagation();
-                    longPressTimer = setTimeout(() => {
-                        this.showDeleteConfirmation(itemId);
-                    }, 800);
-                }, { passive: true });
-                
-                downloadedBadge.addEventListener('touchend', () => {
-                    clearTimeout(longPressTimer);
-                }, { passive: true });
-                
-                downloadedBadge.addEventListener('touchmove', () => {
-                    clearTimeout(longPressTimer);
-                }, { passive: true });
+
+                downloadedBadge.addEventListener(
+                    'touchstart',
+                    (e) => {
+                        e.stopPropagation();
+                        longPressTimer = setTimeout(() => {
+                            this.showDeleteConfirmation(itemId);
+                        }, 800);
+                    },
+                    { passive: true }
+                );
+
+                downloadedBadge.addEventListener(
+                    'touchend',
+                    () => {
+                        clearTimeout(longPressTimer);
+                    },
+                    { passive: true }
+                );
+
+                downloadedBadge.addEventListener(
+                    'touchmove',
+                    () => {
+                        clearTimeout(longPressTimer);
+                    },
+                    { passive: true }
+                );
             }
         });
     }
@@ -1321,22 +1361,20 @@ class TinyFinApp {
         const isEpisode = item.Type === 'Episode';
         const isDownloaded = this.downloadedItemIds.has(item.Id);
         const isDownloading = downloadManager.isDownloading(item.Id);
-        
+
         let badges = '';
-        
+
         // Download state (top-left)
         if (isDownloaded) {
             badges += this.createDownloadedBadgeUI();
         } else if (isDownloading) {
             const progress = downloadManager.getProgress(item.Id);
             badges += this.createDownloadProgressUI(progress);
-        } else {
+        } else if (this.isOnline()) {
             // Show download button only when online
-            if (this.isOnline()) {
-                badges += this.createDownloadButtonUI();
-            }
+            badges += this.createDownloadButtonUI();
         }
-        
+
         // Favorite badge (top-right)
         if (isFavorite) {
             badges += `
@@ -1394,12 +1432,12 @@ class TinyFinApp {
 
     handleNavigation(filter) {
         this.currentFilter = filter;
-        
+
         // Update active state
-        this.navButtons.forEach(btn => {
+        this.navButtons.forEach((btn) => {
             btn.classList.toggle('active', btn.dataset.filter === filter);
         });
-        
+
         this.loadContent();
     }
 
@@ -1426,26 +1464,26 @@ class TinyFinApp {
             if (this.videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
                 console.log('Using native HLS support');
                 this.videoPlayer.src = streamUrl;
-            } 
+            }
             // Use HLS.js for browsers without native support
             else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
                 console.log('Using HLS.js with optimized config');
                 this.hls = new Hls({
                     // Buffer settings - optimized for transcoding
-                    maxBufferLength: 30,           // Max buffer ahead (seconds)
-                    maxMaxBufferLength: 60,        // Absolute max buffer
-                    maxBufferSize: 60 * 1000000,   // 60 MB max buffer size
-                    maxBufferHole: 0.5,            // Max gap in buffer (seconds)
-                    
+                    maxBufferLength: 30, // Max buffer ahead (seconds)
+                    maxMaxBufferLength: 60, // Absolute max buffer
+                    maxBufferSize: 60 * 1000000, // 60 MB max buffer size
+                    maxBufferHole: 0.5, // Max gap in buffer (seconds)
+
                     // Startup settings - be patient for transcoding
-                    startLevel: -1,                // Auto quality selection
+                    startLevel: -1, // Auto quality selection
                     autoStartLoad: true,
-                    startPosition: -1,             // Start from beginning
-                    
+                    startPosition: -1, // Start from beginning
+
                     // Low latency optimizations
-                    lowLatencyMode: false,         // Not needed for VOD
-                    backBufferLength: 30,          // Keep 30s behind playhead
-                    
+                    lowLatencyMode: false, // Not needed for VOD
+                    backBufferLength: 30, // Keep 30s behind playhead
+
                     // Loading settings - longer timeouts for transcoding
                     manifestLoadingTimeOut: 30000, // 30s timeout for manifest
                     manifestLoadingMaxRetry: 6,
@@ -1455,30 +1493,30 @@ class TinyFinApp {
                     levelLoadingMaxRetry: 6,
                     levelLoadingRetryDelay: 2000,
                     levelLoadingMaxRetryTimeout: 60000,
-                    fragLoadingTimeOut: 60000,     // 60s timeout for segments (transcoding can be slow)
-                    fragLoadingMaxRetry: 10,       // More retries
-                    fragLoadingRetryDelay: 2000,   // Wait 2s between retries
+                    fragLoadingTimeOut: 60000, // 60s timeout for segments (transcoding can be slow)
+                    fragLoadingMaxRetry: 10, // More retries
+                    fragLoadingRetryDelay: 2000, // Wait 2s between retries
                     fragLoadingMaxRetryTimeout: 120000,
-                    
+
                     // ABR settings
-                    abrEwmaDefaultEstimate: 500000,     // Start assuming 500kbps
-                    abrBandWidthFactor: 0.8,           // Conservative bandwidth estimate
-                    abrBandWidthUpFactor: 0.5,         // Slow to increase quality
+                    abrEwmaDefaultEstimate: 500000, // Start assuming 500kbps
+                    abrBandWidthFactor: 0.8, // Conservative bandwidth estimate
+                    abrBandWidthUpFactor: 0.5, // Slow to increase quality
                     abrMaxWithRealBitrate: true,
-                    
+
                     // Enable streaming while transcoding
                     progressive: true,
-                    
+
                     // Debug (disable in production)
-                    debug: false,
+                    debug: false
                 });
-                
+
                 this.hls.loadSource(streamUrl);
                 this.hls.attachMedia(this.videoPlayer);
-                
+
                 this.hls.on(Hls.Events.ERROR, (event, data) => {
                     console.warn('HLS error:', data.type, data.details);
-                    
+
                     if (data.fatal) {
                         console.error('HLS fatal error:', data);
                         switch (data.type) {
@@ -1498,22 +1536,22 @@ class TinyFinApp {
                         }
                     }
                 });
-                
+
                 // Wait for manifest to be parsed
                 await new Promise((resolve, reject) => {
                     const timeout = setTimeout(() => {
                         reject(new Error('HLS manifest load timeout'));
                     }, 30000);
-                    
+
                     this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         clearTimeout(timeout);
                         resolve();
                     });
-                    
+
                     this.hls.on(Hls.Events.ERROR, (event, data) => {
                         if (data.fatal) {
                             clearTimeout(timeout);
-                            reject(new Error('HLS loading failed: ' + data.details));
+                            reject(new Error(`HLS loading failed: ${  data.details}`));
                         }
                     });
                 });
@@ -1534,10 +1572,10 @@ class TinyFinApp {
             return;
         }
         this.isStartingPlayback = true;
-        
+
         // Clean up any existing playback first
         this.destroyHls();
-        
+
         this.setLoading(true);
 
         try {
@@ -1546,14 +1584,14 @@ class TinyFinApp {
                 await this.playDownloadedItem(itemId);
                 return;
             }
-            
+
             // Online playback
             // Get item details
             this.currentItem = await jellyfinAPI.getItem(itemId);
-            
+
             // Get playback info (this creates a new PlaySessionId on the server)
             this.playbackInfo = await jellyfinAPI.getPlaybackInfo(itemId);
-            
+
             const mediaSource = this.playbackInfo.MediaSources[0];
             const playSessionId = this.playbackInfo.PlaySessionId;
 
@@ -1566,10 +1604,20 @@ class TinyFinApp {
 
             if (mediaSource.SupportsDirectStream) {
                 // Try direct stream first
-                streamUrl = jellyfinAPI.getStreamUrl(itemId, mediaSource.Id, playSessionId, audioStreamIndex);
+                streamUrl = jellyfinAPI.getStreamUrl(
+                    itemId,
+                    mediaSource.Id,
+                    playSessionId,
+                    audioStreamIndex
+                );
             } else if (mediaSource.SupportsTranscoding) {
                 // Fall back to HLS transcoding
-                streamUrl = jellyfinAPI.getHlsStreamUrl(itemId, mediaSource.Id, playSessionId, audioStreamIndex);
+                streamUrl = jellyfinAPI.getHlsStreamUrl(
+                    itemId,
+                    mediaSource.Id,
+                    playSessionId,
+                    audioStreamIndex
+                );
                 isHls = true;
             } else {
                 throw new Error('No supported playback method');
@@ -1582,12 +1630,14 @@ class TinyFinApp {
             const durationTicks = this.currentItem.RunTimeTicks || 0;
             const durationMinutes = durationTicks / 10000000 / 60;
             const resumePositionSeconds = resumePositionTicks / 10000000;
-            
+
             // Only resume if video is > 30 min and has a saved position > 30 seconds
             const shouldResume = durationMinutes > 30 && resumePositionSeconds > 30;
-            
+
             if (shouldResume) {
-                console.log(`Resuming at ${Math.round(resumePositionSeconds / 60)}min (video is ${Math.round(durationMinutes)}min)`);
+                console.log(
+                    `Resuming at ${Math.round(resumePositionSeconds / 60)}min (video is ${Math.round(durationMinutes)}min)`
+                );
             }
 
             // Show player
@@ -1595,12 +1645,12 @@ class TinyFinApp {
 
             // Load the video source
             await this.loadVideoSource(streamUrl, isHls);
-            
+
             // Set resume position if applicable
             if (shouldResume) {
                 this.videoPlayer.currentTime = resumePositionSeconds;
             }
-            
+
             try {
                 await this.videoPlayer.play();
                 // Ensure overlay is hidden on successful autoplay
@@ -1619,7 +1669,6 @@ class TinyFinApp {
 
             // Load related content
             this.loadRelatedContent();
-
         } catch (error) {
             console.error('Playback failed:', error);
             // Go back to home on error
@@ -1629,57 +1678,56 @@ class TinyFinApp {
             this.isStartingPlayback = false;
         }
     }
-    
+
     /**
      * Play a downloaded item from local storage using HLS.js
      */
     async playDownloadedItem(itemId) {
         try {
             console.log('Playing downloaded item:', itemId);
-            
+
             // Get item metadata from download manager
             const downloadedItems = await downloadManager.getDownloadedItems();
-            const downloadedItem = downloadedItems.find(d => d.itemId === itemId);
-            
+            const downloadedItem = downloadedItems.find((d) => d.itemId === itemId);
+
             if (!downloadedItem) {
                 throw new Error('Downloaded item metadata not found');
             }
-            
+
             this.currentItem = downloadedItem.item;
-            
+
             // No playback info for offline - we won't report progress to server
             this.playbackInfo = null;
-            
+
             // Check for local resume position (for videos > 30 min)
             const durationTicks = this.currentItem.RunTimeTicks || 0;
             const durationMinutes = durationTicks / 10000000 / 60;
             const savedPosition = this.getLocalPlaybackPosition(itemId);
             const shouldResume = durationMinutes > 30 && savedPosition > 30;
-            
+
             if (shouldResume) {
                 console.log(`Resuming offline at ${Math.round(savedPosition / 60)}min`);
             }
-            
+
             // Show player
             this.showPlayer();
-            
+
             // Check if this is an HLS download (new format) or legacy single file
             if (downloadedItem.isHls) {
                 // Get HLS playback URLs (manifest + segment blob URLs)
                 const hlsUrls = await downloadManager.getHlsPlaybackUrls(itemId);
-                
+
                 if (!hlsUrls) {
                     throw new Error('Could not generate HLS playback URLs');
                 }
-                
+
                 // Store for cleanup later
                 this.offlineHlsUrls = hlsUrls;
-                
+
                 console.log('Playing offline HLS:', hlsUrls.manifestUrl);
-                
+
                 // Use HLS.js to play the local manifest
                 await this.loadVideoSource(hlsUrls.manifestUrl, true);
-                
             } else {
                 // Legacy: single file download
                 const videoUrl = await downloadManager.getVideoUrl(itemId);
@@ -1688,15 +1736,15 @@ class TinyFinApp {
                 }
                 this.videoPlayer.src = videoUrl;
             }
-            
+
             // Set resume position if applicable
             if (shouldResume) {
                 this.videoPlayer.currentTime = savedPosition;
             }
-            
+
             // Start local progress saving for offline playback
             this.startLocalProgressSaving();
-            
+
             try {
                 await this.videoPlayer.play();
                 // Ensure overlay is hidden on successful autoplay
@@ -1705,10 +1753,9 @@ class TinyFinApp {
                 console.log('Autoplay blocked, showing play button');
                 this.playerOverlay.classList.add('visible');
             }
-            
+
             // Load related content (random items, or downloaded if offline)
             this.loadRelatedContent();
-            
         } catch (error) {
             console.error('Offline playback failed:', error);
             this.showHome();
@@ -1727,41 +1774,44 @@ class TinyFinApp {
 
             if (this.isOnline()) {
                 // Online: fetch random items from all content
-                const result = await jellyfinAPI.getAllItems({ 
+                const result = await jellyfinAPI.getAllItems({
                     sortBy: 'Random',
                     limit: 20
                 });
-                items = (result.Items || []).filter(item => item.Id !== currentItemId);
+                items = (result.Items || []).filter((item) => item.Id !== currentItemId);
             } else {
                 // Offline: show other downloaded items
                 const downloadedItems = await downloadManager.getDownloadedItems();
                 items = downloadedItems
-                    .map(d => d.item)
-                    .filter(item => item.Id !== currentItemId);
-                
+                    .map((d) => d.item)
+                    .filter((item) => item.Id !== currentItemId);
+
                 // Shuffle for variety
                 items = this.shuffleArray(items).slice(0, 20);
             }
 
             // Render items in drawer
             if (items.length > 0) {
-                this.drawerContent.innerHTML = items.map(item => 
-                    this.createContentCard(item, item.Type === 'Episode')
-                ).join('');
+                this.drawerContent.innerHTML = items
+                    .map((item) => this.createContentCard(item, item.Type === 'Episode'))
+                    .join('');
 
                 // Add click handlers (special handling for drawer - close before playing)
-                this.drawerContent.querySelectorAll('.content-card').forEach(card => {
+                this.drawerContent.querySelectorAll('.content-card').forEach((card) => {
                     const itemId = card.dataset.id;
-                    
+
                     // Play on click (close drawer first)
                     card.addEventListener('click', (e) => {
-                        if (e.target.closest('.download-btn') || e.target.closest('.downloaded-badge')) {
+                        if (
+                            e.target.closest('.download-btn') ||
+                            e.target.closest('.downloaded-badge')
+                        ) {
                             return;
                         }
                         this.closeDrawer();
                         this.playItem(itemId);
                     });
-                    
+
                     // Download button
                     const downloadBtn = card.querySelector('.download-btn');
                     if (downloadBtn) {
@@ -1770,26 +1820,38 @@ class TinyFinApp {
                             this.handleDownloadClick(itemId);
                         });
                     }
-                    
+
                     // Long press on downloaded badge to delete
                     const downloadedBadge = card.querySelector('.downloaded-badge');
                     if (downloadedBadge) {
                         let longPressTimer;
-                        
-                        downloadedBadge.addEventListener('touchstart', (e) => {
-                            e.stopPropagation();
-                            longPressTimer = setTimeout(() => {
-                                this.showDeleteConfirmation(itemId);
-                            }, 800);
-                        }, { passive: true });
-                        
-                        downloadedBadge.addEventListener('touchend', () => {
-                            clearTimeout(longPressTimer);
-                        }, { passive: true });
-                        
-                        downloadedBadge.addEventListener('touchmove', () => {
-                            clearTimeout(longPressTimer);
-                        }, { passive: true });
+
+                        downloadedBadge.addEventListener(
+                            'touchstart',
+                            (e) => {
+                                e.stopPropagation();
+                                longPressTimer = setTimeout(() => {
+                                    this.showDeleteConfirmation(itemId);
+                                }, 800);
+                            },
+                            { passive: true }
+                        );
+
+                        downloadedBadge.addEventListener(
+                            'touchend',
+                            () => {
+                                clearTimeout(longPressTimer);
+                            },
+                            { passive: true }
+                        );
+
+                        downloadedBadge.addEventListener(
+                            'touchmove',
+                            () => {
+                                clearTimeout(longPressTimer);
+                            },
+                            { passive: true }
+                        );
                     }
                 });
             }
@@ -1805,7 +1867,7 @@ class TinyFinApp {
             this.videoPlayer.pause();
         }
     }
-    
+
     /**
      * Handle restart button click - seek to beginning and play
      */
@@ -1814,22 +1876,22 @@ class TinyFinApp {
         this.videoPlayer.play();
         this.hideRestartButton();
     }
-    
+
     /**
      * Check if restart button should be shown
      * Only for long videos (> 30 min) with saved position (> 30 sec)
      */
     shouldShowRestartButton() {
         if (!this.currentItem) return false;
-        
+
         const durationTicks = this.currentItem.RunTimeTicks || 0;
         const durationMinutes = durationTicks / 10000000 / 60;
         const currentPosition = this.videoPlayer.currentTime;
-        
+
         // Show restart if video is > 30 min and current position is > 30 seconds
         return durationMinutes > 30 && currentPosition > 30;
     }
-    
+
     /**
      * Show the restart button
      */
@@ -1838,7 +1900,7 @@ class TinyFinApp {
             this.restartBtn.classList.remove('hidden');
         }
     }
-    
+
     /**
      * Hide the restart button
      */
@@ -1851,7 +1913,7 @@ class TinyFinApp {
     updatePlayPauseIcon(isPlaying) {
         const playIcon = this.playPauseBtn.querySelector('.play-icon');
         const pauseIcon = this.playPauseBtn.querySelector('.pause-icon');
-        
+
         playIcon.classList.toggle('hidden', isPlaying);
         pauseIcon.classList.toggle('hidden', !isPlaying);
     }
@@ -1878,12 +1940,12 @@ class TinyFinApp {
 
     startProgressReporting() {
         this.stopProgressReporting();
-        
+
         this.progressInterval = setInterval(() => {
             if (this.currentItem && this.playbackInfo) {
                 const positionTicks = Math.floor(this.videoPlayer.currentTime * 10000000);
                 const mediaSource = this.playbackInfo.MediaSources[0];
-                
+
                 jellyfinAPI.reportPlaybackProgress(
                     this.currentItem.Id,
                     mediaSource.Id,
@@ -1907,7 +1969,7 @@ class TinyFinApp {
         if (this.currentItem && this.playbackInfo) {
             const positionTicks = Math.floor(this.videoPlayer.currentTime * 10000000);
             const mediaSource = this.playbackInfo.MediaSources[0];
-            
+
             jellyfinAPI.reportPlaybackStopped(
                 this.currentItem.Id,
                 mediaSource.Id,
@@ -1919,35 +1981,36 @@ class TinyFinApp {
         this.stopProgressReporting();
         this.stopLocalProgressSaving();
         this.destroyHls();
-        
+
         // Save final position for offline playback resume
         if (this.currentItem && !this.playbackInfo) {
             const position = Math.floor(this.videoPlayer.currentTime);
-            if (position > 30) { // Only save if watched more than 30 seconds
+            if (position > 30) {
+                // Only save if watched more than 30 seconds
                 this.saveLocalPlaybackPosition(this.currentItem.Id, position);
             }
         }
-        
+
         this.videoPlayer.pause();
-        
+
         // Revoke blob URL if it was a downloaded video (legacy single file)
         const currentSrc = this.videoPlayer.src;
         if (currentSrc && currentSrc.startsWith('blob:')) {
             URL.revokeObjectURL(currentSrc);
         }
-        
+
         // Clean up offline HLS URLs if present
         if (this.offlineHlsUrls) {
             this.offlineHlsUrls.revokeAll();
             this.offlineHlsUrls = null;
         }
-        
+
         this.videoPlayer.removeAttribute('src');
         this.videoPlayer.load();
         this.currentItem = null;
         this.playbackInfo = null;
         this.closeDrawer();
-        
+
         this.showHome();
     }
 
@@ -1956,7 +2019,7 @@ class TinyFinApp {
         if (this.currentItem) {
             this.clearLocalPlaybackPosition(this.currentItem.Id);
         }
-        
+
         // Auto-play next if available
         const firstRelated = this.drawerContent.querySelector('.content-card');
         if (firstRelated) {
@@ -1965,9 +2028,9 @@ class TinyFinApp {
             this.exitPlayer();
         }
     }
-    
+
     // ==================== LOCAL PLAYBACK POSITION (for offline) ====================
-    
+
     /**
      * Get saved playback position for an item (in seconds)
      */
@@ -1979,7 +2042,7 @@ class TinyFinApp {
             return 0;
         }
     }
-    
+
     /**
      * Save playback position for an item (in seconds)
      */
@@ -1992,7 +2055,7 @@ class TinyFinApp {
             console.warn('Failed to save playback position:', e);
         }
     }
-    
+
     /**
      * Clear playback position for an item (when finished watching)
      */
@@ -2005,13 +2068,13 @@ class TinyFinApp {
             console.warn('Failed to clear playback position:', e);
         }
     }
-    
+
     /**
      * Start saving playback position periodically (for offline playback)
      */
     startLocalProgressSaving() {
         this.stopLocalProgressSaving();
-        
+
         this.localProgressInterval = setInterval(() => {
             if (this.currentItem && !this.videoPlayer.paused) {
                 const position = Math.floor(this.videoPlayer.currentTime);
@@ -2019,7 +2082,7 @@ class TinyFinApp {
             }
         }, 10000); // Save every 10 seconds
     }
-    
+
     /**
      * Stop saving playback position
      */
@@ -2046,7 +2109,7 @@ class TinyFinApp {
             e.preventDefault();
             this.openDrawer();
         }
-        
+
         // Swipe down to close
         if (this.isDrawerOpen && deltaY < -50) {
             e.preventDefault();
