@@ -398,22 +398,24 @@ class JellyfinAPI {
     }
 
     /**
-     * Get the ID of a library (view) by name
+     * Get the collection folder ID of a library by name.
+     * Uses /Library/VirtualFolders which returns the real ItemId
+     * that works reliably as a ParentId filter.
      */
     async getLibraryIdByName(name) {
         if (this._libraryIdCache && this._libraryIdCache[name]) {
             return this._libraryIdCache[name];
         }
 
-        const views = await this.request(`/Users/${this.userId}/Views`);
-        const library = (views.Items || []).find(
+        const folders = await this.request('/Library/VirtualFolders');
+        const library = (folders || []).find(
             item => item.Name.toLowerCase() === name.toLowerCase()
         );
 
-        if (library) {
+        if (library && library.ItemId) {
             if (!this._libraryIdCache) this._libraryIdCache = {};
-            this._libraryIdCache[name] = library.Id;
-            return library.Id;
+            this._libraryIdCache[name] = library.ItemId;
+            return library.ItemId;
         }
 
         return null;
