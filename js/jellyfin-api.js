@@ -449,6 +449,33 @@ class JellyfinAPI {
     }
 
     /**
+     * Get items from the Music Noah library
+     */
+    async getMusicNoah(limit = 100, startIndex = 0) {
+        const libraryId = await this.getLibraryIdByName('Music Noah');
+
+        if (!libraryId) {
+            console.warn('Music Noah library not found on server');
+            return { Items: [], TotalRecordCount: 0 };
+        }
+
+        const params = new URLSearchParams({
+            UserId: this.userId,
+            ParentId: libraryId,
+            Recursive: 'true',
+            SortBy: 'SortName',
+            SortOrder: 'Ascending',
+            Fields: 'PrimaryImageAspectRatio,SeriesInfo,ParentId',
+            ImageTypeLimit: 1,
+            EnableImageTypes: 'Primary,Backdrop,Thumb',
+            Limit: limit,
+            StartIndex: startIndex
+        });
+
+        return this.request(`/Users/${this.userId}/Items?${params}`);
+    }
+
+    /**
      * Get favorite items
      */
     async getFavorites(limit = 100, startIndex = 0) {

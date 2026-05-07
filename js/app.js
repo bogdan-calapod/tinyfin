@@ -989,6 +989,9 @@ class TinyFinApp {
             case 'stories':
                 result = await jellyfinAPI.getStories(this.pageSize, startIndex);
                 break;
+            case 'music-noah':
+                result = await jellyfinAPI.getMusicNoah(this.pageSize, startIndex);
+                break;
             default:
                 result = await jellyfinAPI.getAllItems({ 
                     sortBy: 'SortName', 
