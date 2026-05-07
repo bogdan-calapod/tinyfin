@@ -398,6 +398,55 @@ class JellyfinAPI {
     }
 
     /**
+     * Get the ID of a library (view) by name
+     */
+    async getLibraryIdByName(name) {
+        if (this._libraryIdCache && this._libraryIdCache[name]) {
+            return this._libraryIdCache[name];
+        }
+
+        const views = await this.request(`/Users/${this.userId}/Views`);
+        const library = (views.Items || []).find(
+            item => item.Name.toLowerCase() === name.toLowerCase()
+        );
+
+        if (library) {
+            if (!this._libraryIdCache) this._libraryIdCache = {};
+            this._libraryIdCache[name] = library.Id;
+            return library.Id;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get items from the Stories library
+     */
+    async getStories(limit = 100, startIndex = 0) {
+        const libraryId = await this.getLibraryIdByName('Stories');
+
+        if (!libraryId) {
+            console.warn('Stories library not found on server');
+            return { Items: [], TotalRecordCount: 0 };
+        }
+
+        const params = new URLSearchParams({
+            UserId: this.userId,
+            ParentId: libraryId,
+            Recursive: 'true',
+            SortBy: 'SortName',
+            SortOrder: 'Ascending',
+            Fields: 'PrimaryImageAspectRatio,SeriesInfo,ParentId',
+            ImageTypeLimit: 1,
+            EnableImageTypes: 'Primary,Backdrop,Thumb',
+            Limit: limit,
+            StartIndex: startIndex
+        });
+
+        return this.request(`/Users/${this.userId}/Items?${params}`);
+    }
+
+    /**
      * Get favorite items
      */
     async getFavorites(limit = 100, startIndex = 0) {
