@@ -140,6 +140,13 @@ class TVNavigation {
 
         const key = e.key;
 
+        // D-pad in player: ArrowDown toggles overlay
+        if (this.isPlayerActive() && key === 'ArrowDown') {
+            e.preventDefault();
+            this.app.toggleOverlay();
+            return;
+        }
+
         // D-pad navigation
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
             e.preventDefault();
