@@ -46,9 +46,11 @@ class TVNavigation {
         }
 
         // Auto-detect Android WebView (TinyFin TV app)
-        // Android WebView UA contains "wv" flag, e.g. "... Chrome/xxx.x.x.x Mobile Safari/xxx.xx ... wv)"
+        // Android WebView UA contains "wv" token, e.g. "... Android x.x; ... Build/xxx; wv) ..."
         const ua = navigator.userAgent;
-        if (/Android/.test(ua) && /wv\)/.test(ua)) {
+        console.log('TV detection - User Agent:', ua);
+        if (/Android/.test(ua) && /\bwv\b/.test(ua)) {
+            console.log('TV detection - Android WebView detected');
             localStorage.setItem('tinyfin_tvMode', 'true');
             return true;
         }
@@ -60,6 +62,9 @@ class TVNavigation {
      * Detect the actual number of grid columns from CSS layout
      */
     detectGridColumns() {
+        // TV mode is always single column
+        if (this.isEnabled) return 1;
+
         const grid = document.getElementById('content-grid');
         if (grid) {
             const style = getComputedStyle(grid);
