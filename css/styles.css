@@ -1134,21 +1134,12 @@ body {
     font-size: 48px;
 }
 
-/* Content grid - adjust columns for TV screens */
-@media (min-width: 1280px) {
-    .tv-mode .content-grid {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 30px;
-        padding: 30px;
-    }
-}
-
-@media (min-width: 1920px) {
-    .tv-mode .content-grid {
-        grid-template-columns: repeat(5, 1fr);
-        gap: 40px;
-        padding: 40px;
-    }
+/* Content grid - single column for TV screens, must override media queries */
+.tv-mode .content-grid {
+    grid-template-columns: 1fr !important;
+    grid-auto-rows: auto !important;
+    gap: 30px !important;
+    padding: 30px 15% !important;
 }
 
 /* Ensure focused elements are always visible */

@@ -9,7 +9,7 @@ class TVNavigation {
         this.currentFocusIndex = 0;
         this.focusableElements = [];
         this.isEnabled = this.detectTV();
-        this.gridColumns = 3; // Default for content grid
+        this.gridColumns = this.detectGridColumns();
 
         console.log('TinyFin TV Navigation:', {
             enabled: this.isEnabled,
@@ -57,6 +57,19 @@ class TVNavigation {
     }
 
     /**
+     * Detect the actual number of grid columns from CSS layout
+     */
+    detectGridColumns() {
+        const grid = document.getElementById('content-grid');
+        if (grid) {
+            const style = getComputedStyle(grid);
+            const cols = style.gridTemplateColumns.split(' ').filter((s) => s !== '').length;
+            if (cols > 0) return cols;
+        }
+        return 1;
+    }
+
+    /**
      * Initialize TV navigation
      */
     init() {
@@ -68,6 +81,11 @@ class TVNavigation {
 
         // Update focusable elements when screen changes
         this.setupObservers();
+
+        // Recalculate grid columns on resize
+        window.addEventListener('resize', () => {
+            this.gridColumns = this.detectGridColumns();
+        });
 
         // Initial focus
         setTimeout(() => this.updateFocusableElements(), 100);
@@ -267,6 +285,9 @@ class TVNavigation {
      * Update the list of focusable elements
      */
     updateFocusableElements() {
+        // Recalculate grid columns in case content just loaded
+        this.gridColumns = this.detectGridColumns();
+
         // Get currently visible screen
         let activeScreen = null;
         if (!this.app.setupScreen.classList.contains('hidden')) {
