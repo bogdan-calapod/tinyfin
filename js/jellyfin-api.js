@@ -17,7 +17,7 @@ class JellyfinAPI {
     getDeviceId() {
         let deviceId = localStorage.getItem('tinyfin_deviceId');
         if (!deviceId) {
-            deviceId = `tinyfin_${  Math.random().toString(36).substring(2, 15)}`;
+            deviceId = `tinyfin_${Math.random().toString(36).substring(2, 15)}`;
             localStorage.setItem('tinyfin_deviceId', deviceId);
         }
         return deviceId;
@@ -73,7 +73,7 @@ class JellyfinAPI {
 
         // Add https:// if no protocol specified
         if (!normalizedUrl.match(/^https?:\/\//i)) {
-            normalizedUrl = `https://${  normalizedUrl}`;
+            normalizedUrl = `https://${normalizedUrl}`;
         }
 
         this.serverUrl = normalizedUrl;
@@ -98,7 +98,7 @@ class JellyfinAPI {
             console.log(
                 'Connected to Jellyfin server:',
                 serverInfo.ServerName,
-                `v${  serverInfo.Version}`
+                `v${serverInfo.Version}`
             );
         } catch (error) {
             console.error('Server connection test failed:', error);
@@ -111,7 +111,7 @@ class JellyfinAPI {
             ) {
                 throw new Error('Cannot reach server. Check URL and CORS settings.');
             }
-            throw new Error(`Cannot connect to server: ${  error.message}`);
+            throw new Error(`Cannot connect to server: ${error.message}`);
         }
 
         // Authenticate
@@ -140,7 +140,7 @@ class JellyfinAPI {
             if (error.message.includes('401')) {
                 throw new Error('Invalid username or password');
             }
-            throw new Error(`Login failed: ${  error.message}`);
+            throw new Error(`Login failed: ${error.message}`);
         }
     }
 
@@ -412,23 +412,39 @@ class JellyfinAPI {
 
     /**
      * Get the collection folder ID of a library by name.
-     * Uses /Library/VirtualFolders which returns the real ItemId
-     * that works reliably as a ParentId filter.
+     * Uses /Users/{userId}/Views which is accessible to non-admin users.
      */
     async getLibraryIdByName(name) {
         if (this._libraryIdCache && this._libraryIdCache[name]) {
             return this._libraryIdCache[name];
         }
 
-        const folders = await this.request('/Library/VirtualFolders');
-        const library = (folders || []).find(
+        const views = await this.request(`/Users/${this.userId}/Views`);
+        console.log(
+            'Views response:',
+            JSON.stringify(
+                (views.Items || []).map((v) => ({
+                    Name: v.Name,
+                    Id: v.Id,
+                    CollectionType: v.CollectionType,
+                    Type: v.Type
+                })),
+                null,
+                2
+            )
+        );
+        const library = (views.Items || []).find(
             (item) => item.Name.toLowerCase() === name.toLowerCase()
         );
+        console.log(
+            `Library lookup for "${name}":`,
+            library ? `found, Id=${library.Id}` : 'NOT FOUND'
+        );
 
-        if (library && library.ItemId) {
+        if (library && library.Id) {
             if (!this._libraryIdCache) this._libraryIdCache = {};
-            this._libraryIdCache[name] = library.ItemId;
-            return library.ItemId;
+            this._libraryIdCache[name] = library.Id;
+            return library.Id;
         }
 
         return null;
@@ -458,7 +474,15 @@ class JellyfinAPI {
             StartIndex: startIndex
         });
 
-        return this.request(`/Users/${this.userId}/Items?${params}`);
+        const url = `/Users/${this.userId}/Items?${params}`;
+        console.log('Stories query URL:', url);
+        const result = await this.request(url);
+        console.log('Stories result:', {
+            TotalRecordCount: result.TotalRecordCount,
+            ItemCount: (result.Items || []).length,
+            FirstItem: (result.Items || [])[0]
+        });
+        return result;
     }
 
     /**
@@ -485,7 +509,15 @@ class JellyfinAPI {
             StartIndex: startIndex
         });
 
-        return this.request(`/Users/${this.userId}/Items?${params}`);
+        const url = `/Users/${this.userId}/Items?${params}`;
+        console.log('Music Noah query URL:', url);
+        const result = await this.request(url);
+        console.log('Music Noah result:', {
+            TotalRecordCount: result.TotalRecordCount,
+            ItemCount: (result.Items || []).length,
+            FirstItem: (result.Items || [])[0]
+        });
+        return result;
     }
 
     /**

@@ -1186,3 +1186,12 @@ body {
     padding: 30px 40px;
     gap: 40px;
 }
+
+/* Hide all download UI in TV mode */
+.tv-mode .download-btn,
+.tv-mode .download-progress,
+.tv-mode .downloaded-badge,
+.tv-mode .delete-download-btn,
+.tv-mode .nav-btn[data-filter='downloads'] {
+    display: none !important;
+}
