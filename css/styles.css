@@ -1134,12 +1134,12 @@ body {
     font-size: 48px;
 }
 
-/* Content grid - single column for TV screens, must override media queries */
+/* Content grid for TV screens - 3 columns visually, but D-pad navigates linearly */
 .tv-mode .content-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(3, 1fr) !important;
     grid-auto-rows: auto !important;
     gap: 30px !important;
-    padding: 30px 15% !important;
+    padding: 30px 40px !important;
 }
 
 /* Ensure focused elements are always visible */

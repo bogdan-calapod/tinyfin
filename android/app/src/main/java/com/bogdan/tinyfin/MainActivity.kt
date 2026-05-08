@@ -42,7 +42,7 @@ class MainActivity : Activity() {
          * For example: "http://192.168.1.100:8096/web/tinyfin/index.html"
          * or any URL where the TinyFin files are hosted.
          */
-        private const val TINYFIN_URL = "https://bogdan-calapod.github.io/tinyfin/"
+        private const val TINYFIN_URL = "https://bogdan-calapod.github.io/tinyfin/?tv=1"
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -116,7 +116,9 @@ class MainActivity : Activity() {
                 "UTF-8"
             )
         } else {
-            webView.loadUrl(TINYFIN_URL)
+            // Append ?tv=1 to enable TV navigation mode
+            val separator = if ("?" in TINYFIN_URL) "&" else "?"
+            webView.loadUrl("${TINYFIN_URL}${separator}tv=1")
         }
     }
 
