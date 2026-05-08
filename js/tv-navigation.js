@@ -28,7 +28,8 @@ class TVNavigation {
 
     /**
      * Detect if running on Android TV or similar device
-     * Checks for ?tv=1 URL parameter or localStorage setting
+     * Checks for ?tv=1 URL parameter, localStorage setting,
+     * or Android WebView user agent (i.e. the TinyFin TV app).
      */
     detectTV() {
         // Check URL parameter first
@@ -41,6 +42,14 @@ class TVNavigation {
 
         // Check localStorage for saved TV mode preference
         if (localStorage.getItem('tinyfin_tvMode') === 'true') {
+            return true;
+        }
+
+        // Auto-detect Android WebView (TinyFin TV app)
+        // Android WebView UA contains "wv" flag, e.g. "... Chrome/xxx.x.x.x Mobile Safari/xxx.xx ... wv)"
+        const ua = navigator.userAgent;
+        if (/Android/.test(ua) && /wv\)/.test(ua)) {
+            localStorage.setItem('tinyfin_tvMode', 'true');
             return true;
         }
 
