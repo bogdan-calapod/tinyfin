@@ -140,11 +140,18 @@ class TVNavigation {
 
         const key = e.key;
 
-        // D-pad in player: ArrowDown toggles overlay
-        if (this.isPlayerActive() && key === 'ArrowDown') {
-            e.preventDefault();
-            this.app.toggleOverlay();
-            return;
+        // D-pad in player: ArrowDown opens drawer, ArrowUp closes it
+        if (this.isPlayerActive()) {
+            if (key === 'ArrowDown' && !this.app.isDrawerOpen) {
+                e.preventDefault();
+                this.app.openDrawer();
+                return;
+            }
+            if (key === 'ArrowUp' && this.app.isDrawerOpen) {
+                e.preventDefault();
+                this.app.closeDrawer();
+                return;
+            }
         }
 
         // D-pad navigation
