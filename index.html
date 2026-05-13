@@ -368,6 +368,12 @@
         <script>
             // Register Service Worker for PWA/offline support
             if ('serviceWorker' in navigator) {
+                // Auto-reload when a new service worker takes control
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    console.log('New SW active, reloading...');
+                    window.location.reload();
+                });
+
                 window.addEventListener('load', () => {
                     navigator.serviceWorker
                         .register('./sw.js')
