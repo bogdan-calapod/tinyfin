@@ -140,9 +140,16 @@ class TVNavigation {
 
         const key = e.key;
 
+        // Log all key events for debugging
+        console.log('TV keydown:', {
+            key,
+            code: e.code,
+            keyCode: e.keyCode,
+            player: this.isPlayerActive()
+        });
+
         // D-pad in player: ArrowDown opens drawer, ArrowUp closes it
         if (this.isPlayerActive()) {
-            console.log('TV key in player:', key, 'drawerOpen:', this.app.isDrawerOpen);
             if (key === 'ArrowDown' && !this.app.isDrawerOpen) {
                 e.preventDefault();
                 this.app.openDrawer();
